@@ -1,79 +1,103 @@
-import React from "react";
+import React, { useState } from "react";
 import { useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Dialog } from "@material-tailwind/react";
+import { fetchBusiness } from "@/services/fetchBusiness";
+import { addCustomer } from "@/services/addCustomer";
+import { updateCustomer } from "@/services/updateCustomer";
 const phoneRgex = /^((\+92)?(0092)?(92)?(0)?)(3)([0-9]{9})$/gm;
 const schema = Yup.object().shape({
-  companyName: Yup.string().required("Company name is required"),
   firstName: Yup.string().required("First name is required"),
   lastName: Yup.string().required("Last name is reuired"),
-  mobilePhone: Yup.string().matches(phoneRgex, "Please add a valid phone number").required("Mobile number is required"),
-  officePhone: Yup.string().optional(),
+  phone: Yup.string().matches(phoneRgex, "Please add a valid phone number").required("Mobile number is required"),
   email: Yup.string().email("Please add a valid email").required("Email is required"),
-  address: Yup.string().required("Address is required"),
+  address: Yup.string(),
   taxable: Yup.boolean(true),
-  taxType: Yup.string()
+  BusinessId: Yup.string().required('Business is required')
 });
-const MyPopUpForm = ({ open, close, selectedItem }) => {
+const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setRefresh }) => {
 
-  const isEditMode = selectedItem != null;
-  
+  const [edit, setEdit] = useState(false);
+  const [businesses, setBusinesses] = useState([]);
+
+
   const handleClose = () => {
     clearForm(formikProps);
+    setEdit(false);
+    setSelectedItem(null);
     close();
   };
+
+  useEffect(() => {
+    getBusinesses()
+  }, [refresh])
+
+  const getBusinesses = async () => {
+    const businesses = await fetchBusiness();
+    setBusinesses(await businesses.json())
+  }
 
   useEffect(() => {
     if (selectedItem) {
       console.log(selectedItem);
       formikProps.setValues(selectedItem);
+      setEdit(true);
       console.log(formikProps.values);
     }
   }, [selectedItem]);
 
-  const onSubmit = (values, actions) => {
+  const onSubmit = async (values, actions) => {
     console.log(values);
+    let res = '';
+    try {
+      if (!edit) {
+        res = await addCustomer(values)
+      }
+      else {
+        res = await updateCustomer(selectedItem.id, values)
+      }
+      const customer = await res.json();
+      console.log(customer)
+      setRefresh(!refresh);
+      handleClose();
+    } catch (error) {
+      console.log(error)
+    }
   };
 
   const clearForm = (formikProps) => {
     formikProps.resetForm({
       values: {
-        companyName: "",
         firstName: "",
         lastName: "",
-        mobilePhone: "",
-        officePhone: "",
+        phone: "",
         email: "",
         address: "",
         taxable: false,
-        taxType: ""
+        BusinessId: "",
       },
       errors: {
-        companyName: "",
         firstName: "",
         lastName: "",
-        mobilePhone: "",
-        officePhone: "",
+        phone: "",
         email: "",
         address: "",
         taxable: false,
-        taxType: ""
+        BusinessId: "",
       },
     });
   };
 
   const formikProps = useFormik({
     initialValues: {
-      companyName: "",
       firstName: "",
       lastName: "",
-      mobilePhone: "",
-      officePhone: "",
+      phone: "",
       email: "",
       address: "",
       taxable: false,
-      taxType: ""
+      BusinessId: "",
     },
     validationSchema: schema,
     onSubmit,
@@ -98,7 +122,7 @@ const MyPopUpForm = ({ open, close, selectedItem }) => {
               <div className="flex items-center justify-between sticky bg-gradient-to-br from-gray-800 to-gray-700">
                 <div></div>
                 <div className="text-white text-center text-lg">
-                  {isEditMode ? "EDIT CUSTOMER" : "New Customer"}
+                  {edit ? "EDIT CUSTOMER" : "New Customer"}
                 </div>
                 <button
                   className=" bg-transparent hover:bg-gray-800 text-white font-bold py-2 px-4 rounded"
@@ -123,25 +147,6 @@ const MyPopUpForm = ({ open, close, selectedItem }) => {
               </div>
 
               <div className="p-6">
-
-                <div>
-                  <label className="font-bold">Company Name</label> <br />
-                  <input
-                    className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                    id="companyName"
-                    name="companyName"
-                    type="text"
-                    value={values.companyName}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {touched.companyName && errors.companyName && (
-                    <div className="text-red-500">
-                      {errors.companyName}
-                    </div>
-                  )}
-                </div>
-
                 <div className="flex items-center justify-start space-x-4">
                   <div>
                     <label className="font-bold">First Name</label> <br />
@@ -184,33 +189,38 @@ const MyPopUpForm = ({ open, close, selectedItem }) => {
                     <label className="font-bold">Mobile Phone</label> <br />
                     <input
                       className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                      id="mobilePhone"
-                      name="mobilePhone"
+                      id="phone"
+                      name="phone"
                       type="text"
-                      value={values.mobilePhone}
+                      value={values.phone}
                       onChange={handleChange}
                       onBlur={handleBlur}
                     />
-                    {(touched.mobilePhone && errors.mobilePhone) ? (
+                    {(touched.phone && errors.phone) ? (
                       <div className="text-red-500">
-                        {errors.mobilePhone}
+                        {errors.phone}
                       </div>
                     ) : (<div></div>)}
                   </div>
                   <div>
-                    <label className="font-bold">Office Phone</label> <br />
-                    <input
-                      className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                      id="officePhone"
-                      name="officePhone"
-                      type="text"
-                      value={values.officePhone}
-                      onChange={handleChange}
+                    <label className="font-bold">Business</label>
+                    <select
+                      className="w-full p-2 border border-gray-300 bg-inherit rounded-md"
+                      id="type"
+                      name="type"
+                      value={values.BusinessId}
+                      onChange={(e) => setValues({ ...values, ['BusinessId']: e.target.value })}
                       onBlur={handleBlur}
-                    />
-                    {touched.officePhone && errors.officePhone ? (
+                    >
+                      <option value="">Select Business</option>
+                      {businesses ?
+                        businesses.map((business) => (
+                          <option key={business.id} value={business.id}>{business.name}, {business.location}</option>
+                        )) : []}
+                    </select>
+                    {touched.BusinessId && errors.BusinessId ? (
                       <div className="text-red-500">
-                        {errors.officePhone}
+                        {errors.BusinessId}
                       </div>
                     ) : (<div></div>)}
                   </div>
@@ -267,30 +277,7 @@ const MyPopUpForm = ({ open, close, selectedItem }) => {
                     />
                     &nbsp;Taxable
                   </label>
-                  {values.taxable && (
-                    <div>
-                      <label className="font-bold">Choose Tax Type</label>
-                      <select
-                        className="w-full p-2 border border-gray-300 bg-inherit rounded-md"
-                        id="taxType"
-                        name="taxType"
-                        value={values.taxType}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                      >
-                        <option value="">Select Tax Type</option>
-                        <option value="Type A">Type A</option>
-                        <option value="Type B">Type B</option>
-                        <option value="Type C">Type C</option>
-                      </select>
-                    </div>
-                  )}
-
                 </div>
-
-
-
-
               </div>
               <div className="flex items-center justify-end space-x-2 sticky bg-gradient-to-br from-gray-800 to-gray-700">
                 <button
@@ -304,7 +291,7 @@ const MyPopUpForm = ({ open, close, selectedItem }) => {
                   className="w-32 bg-gray-600 hover:bg-gray-900 text-white font-bold py-2 px-4"
                   type="submit"
                 >
-                  {isEditMode ? "Update" : "Save"}
+                  {edit ? "Update" : "Save"}
                 </button>
               </div>
             </div>
