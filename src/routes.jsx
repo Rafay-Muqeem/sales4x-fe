@@ -7,9 +7,8 @@ import {
   UserGroupIcon,
   PencilSquareIcon
 } from "@heroicons/react/24/solid";
-import { Customers, Invoice, Profile, Tables, Inspection, Appointments, Settings  } from "@/pages/dashboard";
+import { Customers, Invoice, Product, Tables, Inspection, Appointments, Settings  } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
-// import Settings from "./pages/dashboard/settings";
 
 const icon = {
   className: "w-5 h-5 text-inherit",
@@ -34,8 +33,8 @@ export const routes = [
       {
         icon: <CubeIcon {...icon} />,
         name: "Products",
-        path: "/tables",
-        element: <Tables />,
+        path: "/products",
+        element: <Product />,
       },
       {
         icon: <PencilSquareIcon {...icon} />,
