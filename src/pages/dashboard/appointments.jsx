@@ -129,7 +129,7 @@ export function Appointments() {
 
                     <div className="grid grid-cols-7">
                         {weekDaysList.map((day, index) => (
-                            <div key={index} className="p-1 border border-gray-300 h-8 text-center bg-blue-gray-50/50">
+                            <div key={index} className="p-1 font-semibold border border-gray-300 h-8 text-center bg-blue-gray-50/50">
                                 {day}
                             </div>
                         ))}
