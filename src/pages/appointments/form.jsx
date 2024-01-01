@@ -8,23 +8,14 @@ import * as Yup from "yup";
 
 const schema = Yup.object().shape({
     customerName: Yup.string().required("Customer name is required"),
+    customerEmail: Yup.string(),
     description: Yup.string(),
     startDateTime: Yup.date().required("Start date is required"),
-    endDateTime: Yup.date().required("End date is required"),
+    endTime: Yup.string().required("End Time is required"),
+    sendEmail: Yup.boolean()
 });
 
 function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refresh, setRefresh }) {
-
-    const modalRef = useRef(null);
-
-    // const [id, setId] = useState('');
-    // const [formData, setFormData] = useState({
-    //     customerName: '',
-    //     description: '',
-    //     startDateTime: '',
-    //     endDateTime: '',
-    // });
-
 
     const [currentDate, setCurrentDate] = useState(getCurrentDateTimeForInput());
     const [update, setUpdate] = useState(false);
@@ -37,28 +28,17 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
         handleOpen();
     };
 
-    // const handleOutsideClick = (e) => {
-    //     if (modalRef.current && !modalRef.current.contains(e.target)) {
-    //         resetFields();
-    //     }
-    // };
-
-    // useEffect(() => {
-    //     document.addEventListener('mousedown', handleOutsideClick);
-
-    //     return () => {
-    //         document.removeEventListener('mousedown', handleOutsideClick);
-    //     };
-    // }, []);
-
     useEffect(() => {
         if (selectedItem) {
             setUpdate(true);
+            console.log(selectedItem.endTime);
             formikProps.setValues({
                 customerName: selectedItem.customerName,
+                customerEmail: selectedItem.customerEmail,
                 description: selectedItem.description,
                 startDateTime: correctDateFormat(selectedItem.startDateTime),
-                endDateTime: correctDateFormat(selectedItem.endDateTime)
+                endTime: selectedItem.endTime,
+                sendEmail: selectedItem.sendEmail,
             });
         }
     }, [selectedItem])
@@ -97,7 +77,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
     function getCurrentDateTimeForInput() {
         const now = new Date();
         const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+        const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
         const hours = String(now.getHours()).padStart(2, '0');
         const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -106,16 +86,14 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
     };
 
     const onSubmit = async (values, actions) => {
-        let res = '';
 
         const inputStartDate = values.startDateTime.split('T')[0];
         const inputStartTime = (parseInt(values.startDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(values.startDateTime.split('T')[1].split(':')[1], 10);
-        const inputEndDate = values.endDateTime.split('T')[0];
-        const inputEndTime = (parseInt(values.endDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(values.endDateTime.split('T')[1].split(':')[1], 10);
+        const inputEndTime = (parseInt(values.endTime.split(':')[0], 10) * 60) + parseInt(values.endTime.split(':')[1], 10);
         const currDate = currentDate.split('T')[0];
         const currentTime = (parseInt(currentDate.split('T')[1].split(':')[0], 10) * 60) + parseInt(currentDate.split('T')[1].split(':')[1], 10);
 
-        if (inputStartTime >= inputEndTime || inputStartDate > inputEndDate) {
+        if (inputStartTime >= inputEndTime) {
             setError(true);
             setErrorFalse();
         }
@@ -125,7 +103,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
             setErrorFalse();
         }
 
-        else if (inputEndTime <= currentTime && inputEndDate === currDate) {
+        else if (inputEndTime <= currentTime) {
             setError(true);
             setErrorFalse();
         }
@@ -133,12 +111,13 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
         else {
             try {
                 if (!update) {
-                    res = await addAppointment(values);
+                    const res = await addAppointment(values);
+                    const appointment = await res.json();
                 }
                 else {
-                    res = await updateAppointment(selectedItem.id, values)
+                    const res = await updateAppointment(selectedItem.id, values);
+                    const appointment = await res.json();
                 }
-                const appointment = await res.json();
                 setRefresh(!refresh);
                 handleClose();
             } catch (error) {
@@ -158,15 +137,19 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
         formikProps.resetForm({
             values: {
                 customerName: '',
+                customerEmail: '',
                 description: '',
                 startDateTime: '',
-                endDateTime: '',
+                endTime: '',
+                sendEmail: false,
             },
             errors: {
                 customerName: '',
+                customerEmail: '',
                 description: '',
                 startDateTime: '',
-                endDateTime: '',
+                endTime: '',
+                sendEmail: false,
             },
         });
     };
@@ -174,9 +157,11 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
     const formikProps = useFormik({
         initialValues: {
             customerName: '',
+            customerEmail: '',
             description: '',
             startDateTime: '',
-            endDateTime: '',
+            endTime: '',
+            sendEmail: false,
         },
         validationSchema: schema,
         onSubmit,
@@ -195,7 +180,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
 
     return (
         <>
-            <Dialog ref={modalRef} size="sm" open={open} handler={handleOpen}>
+            <Dialog size="sm" open={open} handler={handleOpen}>
                 {open && (
                     <form onSubmit={handleSubmit} autoComplete="new" >
                         <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center">
@@ -228,41 +213,58 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                                 </div>
 
                                 <div className="p-6">
-                                    <div className="flex items-center justify-start space-x-4">
-                                        <div>
-                                            <label className="font-bold">Customer Name</label> <br />
-                                            <input
-                                                className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                                                id="customerName"
-                                                name="customerName"
-                                                type="customerName"
-                                                value={values.customerName}
-                                                onChange={handleChange}
-                                                onBlur={handleBlur}
-                                            />
-                                            {touched.customerName && errors.customerName && (
-                                                <div className="text-red-500">
-                                                    {errors.customerName}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="font-bold">Description</label> <br />
-                                            <input
-                                                className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                                                id="description"
-                                                name="description"
-                                                type="description"
-                                                value={values.description}
-                                                onChange={handleChange}
-                                                onBlur={handleBlur}
-                                            />
-                                            {touched.description && errors.description && (
-                                                <div className="text-red-500">
-                                                    {errors.description}
-                                                </div>
-                                            )}
-                                        </div>
+                                    <div>
+                                        <label className="font-bold">Customer Name</label> <br />
+                                        <input
+                                            className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                                            id="customerName"
+                                            name="customerName"
+                                            type="customerName"
+                                            value={values.customerName}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                        />
+                                        {touched.customerName && errors.customerName && (
+                                            <div className="text-red-500">
+                                                {errors.customerName}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="font-bold">Customer Email</label> <br />
+                                        <input
+                                            className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                                            id="customerEmail"
+                                            name="customerEmail"
+                                            type="customerEmail"
+                                            value={values.customerEmail}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                        />
+                                        {touched.customerEmail && errors.customerEmail && (
+                                            <div className="text-red-500">
+                                                {errors.customerEmail}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="font-bold">Description</label> <br />
+                                        <input
+                                            className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                                            id="description"
+                                            name="description"
+                                            type="description"
+                                            value={values.description}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                        />
+                                        {touched.description && errors.description && (
+                                            <div className="text-red-500">
+                                                {errors.description}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex items-center justify-start space-x-4">
@@ -285,23 +287,39 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                                             ) : (<div></div>)}
                                         </div>
                                         <div>
-                                            <label className="font-bold">End Date & Time</label> <br />
+                                            <label className="font-bold">End Time</label> <br />
                                             <input
                                                 className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                                                id="endDateTime"
-                                                name="endDateTime"
-                                                type="datetime-local"
-                                                min={currentDate}
-                                                value={values.endDateTime}
+                                                id="endTime"
+                                                name="endTime"
+                                                type="time"
+                                                value={values.endTime}
                                                 onChange={handleChange}
                                                 onBlur={handleBlur}
                                             />
-                                            {touched.endDateTime && errors.endDateTime ? (
+                                            {touched.endTime && errors.endTime ? (
                                                 <div className="text-red-500">
-                                                    {errors.endDateTime}
+                                                    {errors.endTime}
                                                 </div>
                                             ) : (<div></div>)}
                                         </div>
+                                    </div>
+                                    <div>
+                                        <label className="font-bold">
+                                            <input
+                                                type="checkbox"
+                                                id="sendEmail"
+                                                name="sendEmail"
+                                                checked={values.sendEmail}
+                                                onChange={(e) => {
+                                                    setValues((prevValues) => ({
+                                                        ...prevValues,
+                                                        sendEmail: e.target.checked
+                                                    }));
+                                                }}
+                                            />
+                                            &nbsp;Send Email
+                                        </label>
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-end space-x-2 sticky bg-gradient-to-br from-gray-800 to-gray-700">
@@ -332,7 +350,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                         </div>
                     </form>
                 )}
-            </Dialog>
+            </Dialog >
         </>
     );
 }
