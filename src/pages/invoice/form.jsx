@@ -14,6 +14,8 @@ import {
 import { fetchProducts } from "@/services/fetchProducts";
 import { fetchCustomers } from "@/services/fetchCustomers";
 import { fetchTaxes } from "@/services/fetchTaxes";
+import { addInvoice } from "@/services/addInvoice";
+
 
 
 const TABLE_HEAD = [
@@ -24,11 +26,12 @@ const TABLE_HEAD = [
   "Amount",
   "Action"
 ]
-const MyPopUpForm = ({ open, close }) => {
+const MyPopUpForm = ({ open, close,selectedInvoice }) => {
+  console.log(selectedInvoice);
   const [customers, setCustomers] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState({});
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [taxes, setTaxes] = useState([]);
-  const [selectedTax, setSelectedTax] = useState({});
+  const [selectedTax, setSelectedTax] = useState(null);
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
@@ -51,6 +54,28 @@ const MyPopUpForm = ({ open, close }) => {
     ]);
   }, []);
 
+  const handleSave = async (event) => {
+    event.preventDefault();
+    const selectedProductIds = selectedProducts.map((product) => product.id);
+    const data = {
+      "invoiceData":{
+        
+        
+        "totalAmount":calculateTotalAmountWithTax(),
+        "paymentMethod": "Card....",
+        "paymentStatus": "paid....",
+        
+        "CustomerId": selectedCustomer.id,
+        "VehicleId": "c8b88990-25f6-4262-9795-6e8cca895706",
+      },
+      
+      "products":selectedProductIds,
+    };
+    const res = await addInvoice(data)
+    console.log(res);
+    
+  };
+
   const getProducts = async () => {
     const fetchedProducts = await fetchProducts();
     const productsData = await fetchedProducts.json();
@@ -58,38 +83,44 @@ const MyPopUpForm = ({ open, close }) => {
 
   };
 
-  const handleProductChange = async (index, selectedProduct) => {
+  const handleProductChange = async (index, selectedProId) => {
     const updatedItems = [...selectedProducts];
-    updatedItems[index].product = selectedProduct;
-
+    updatedItems[index].product = selectedProId; // Assign the selected product's ID to product
+  
     const selectedProductDetails = products.find(
-      (product) => product.name === selectedProduct
+      (product) => product.id === selectedProId
     );
-
+  
     if (selectedProductDetails) {
+      updatedItems[index].id = selectedProductDetails.id; // Assign the selected product's ID
+      updatedItems[index].name = selectedProductDetails.name;
       updatedItems[index].price = selectedProductDetails.price;
       updatedItems[index].taxable = selectedProductDetails.taxable;
     } else {
+      updatedItems[index].id = "";
+      updatedItems[index].name = "";
       updatedItems[index].price = 0;
       updatedItems[index].taxable = false;
     }
-
+  
     setSelectedProducts(updatedItems);
-
+  
     const isLastRow = index === selectedProducts.length - 1;
-    const isNewProductSelected = selectedProduct !== "";
-
+    const isNewProductSelected = selectedProId !== "";
+  
     if (isLastRow && isNewProductSelected) {
       const newItem = {
+        id: "",
         product: "",
+        name: "",
         quantity: 1,
         price: 0,
-        taxable: false
+        taxable: false,
       };
       setSelectedProducts([...updatedItems, newItem]);
     }
   };
-
+  
   const handleQuantityChange = (index, quantity) => {
     const updatedItems = [...selectedProducts];
     updatedItems[index].quantity = quantity;
@@ -141,12 +172,17 @@ const MyPopUpForm = ({ open, close }) => {
 
   const calculateTaxAmount = () => {
     if (selectedTax.type === '$') {
-      return selectedTax.rate;
+      return selectedTax.rate; 
     } else if (selectedTax.type === '%') {
-      return (totalAmount * selectedTax.rate) / 100;
+      const taxableProducts = selectedProducts.filter(product => product.taxable === true);
+      const totalTaxableAmount = taxableProducts.reduce((acc, product) => {
+        return acc + (product.price * product.quantity);
+      }, 0);
+      return (totalTaxableAmount * selectedTax.rate) / 100; 
     }
     return 0;
   };
+  
   
   const calculateTotalAmountWithTax = () => {
 
@@ -175,11 +211,9 @@ const MyPopUpForm = ({ open, close }) => {
   };
 
   useEffect(() => {
-    console.log(taxes);
     const foundtax = taxes.find(
       (tax) => tax.default === true
     );
-    console.log(foundtax);
     setSelectedTax(foundtax);
   }, [taxes]);
 
@@ -187,7 +221,7 @@ const MyPopUpForm = ({ open, close }) => {
   return (
     <Dialog open={open}>
       {open && (
-        <form>
+        <form onSubmit={handleSave} >
           <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center">
             <div className="bg-white rounded shadow-xl">
               <div className="flex items-center justify-between sticky bg-gradient-to-br from-gray-800 to-gray-700">
@@ -329,7 +363,7 @@ const MyPopUpForm = ({ open, close }) => {
                                 {products.map((product) => (
                                   <option
                                     key={product.id}
-                                    value={product.name}
+                                    value={product.id}
                                   >
                                     {product.name}
                                   </option>
