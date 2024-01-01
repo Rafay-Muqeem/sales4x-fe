@@ -1,6 +1,6 @@
 export async function addTax(data){
     try {
-        const tax = await fetch("http://localhost:5000/api/tax/create", {
+        const tax = await fetch("https://solutions4x.com/api/tax/create", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

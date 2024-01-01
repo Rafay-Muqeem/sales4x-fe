@@ -1,6 +1,6 @@
 export async function updateTax(id, data){
     try {
-        const tax = await fetch(`http://localhost:5000/api/tax/update/${id}`, {
+        const tax = await fetch(`https://solutions4x.com/api/tax/update/${id}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json"

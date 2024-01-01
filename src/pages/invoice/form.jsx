@@ -1,104 +1,199 @@
 import React from "react";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { Dialog } from "@material-tailwind/react";
-const phoneRgex = /^((\+92)?(0092)?(92)?(0)?)(3)([0-9]{9})$/gm;
-const schema = Yup.object().shape({
-  companyName: Yup.string().required("Company name is required"),
-  firstName: Yup.string().required("First name is required"),
-  lastName: Yup.string().required("Last name is reuired"),
-  mobilePhone: Yup.string().matches(phoneRgex, "Please add a valid phone number").required("Mobile number is required"),
-  officePhone: Yup.string().optional(),
-  email: Yup.string().email("Please add a valid email").required("Email is required"),
-  address: Yup.string().required("Address is required"),
-  taxable: Yup.boolean(true),
-  taxType: Yup.string()
-});
-const MyPopUpForm = ({ open, close, selectedItem }) => {
+import {
+  Card,
+  Typography,
+  CardBody,
+  Dialog
+} from "@material-tailwind/react";
+import {
+  XCircleIcon
+} from "@heroicons/react/24/outline";
+import { fetchProducts } from "@/services/fetchProducts";
+import { fetchCustomers } from "@/services/fetchCustomers";
+import { fetchTaxes } from "@/services/fetchTaxes";
 
-  const isEditMode = selectedItem != null;
-  
+
+const TABLE_HEAD = [
+  "Product",
+  "Quantity",
+  "Price",
+  "Tax",
+  "Amount",
+  "Action"
+]
+const MyPopUpForm = ({ open, close }) => {
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState({});
+  const [taxes, setTaxes] = useState([]);
+  const [selectedTax, setSelectedTax] = useState({});
+  const [products, setProducts] = useState([]);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [totalAmount, setTotalAmount] = useState(0);
+
   const handleClose = () => {
-    clearForm(formikProps);
     close();
   };
 
   useEffect(() => {
-    if (selectedItem) {
-      console.log(selectedItem);
-      formikProps.setValues(selectedItem);
-      console.log(formikProps.values);
+    getProducts();
+    getCustomers();
+    getTaxes();
+    setSelectedProducts([
+      {
+        product: "",
+        quantity: 1,
+        price: 0,
+        taxable: false
+      }
+    ]);
+  }, []);
+
+  const getProducts = async () => {
+    const fetchedProducts = await fetchProducts();
+    const productsData = await fetchedProducts.json();
+    setProducts(productsData);
+
+  };
+
+  const handleProductChange = async (index, selectedProduct) => {
+    const updatedItems = [...selectedProducts];
+    updatedItems[index].product = selectedProduct;
+
+    const selectedProductDetails = products.find(
+      (product) => product.name === selectedProduct
+    );
+
+    if (selectedProductDetails) {
+      updatedItems[index].price = selectedProductDetails.price;
+      updatedItems[index].taxable = selectedProductDetails.taxable;
+    } else {
+      updatedItems[index].price = 0;
+      updatedItems[index].taxable = false;
     }
-  }, [selectedItem]);
 
-  const onSubmit = (values, actions) => {
-    console.log(values);
+    setSelectedProducts(updatedItems);
+
+    const isLastRow = index === selectedProducts.length - 1;
+    const isNewProductSelected = selectedProduct !== "";
+
+    if (isLastRow && isNewProductSelected) {
+      const newItem = {
+        product: "",
+        quantity: 1,
+        price: 0,
+        taxable: false
+      };
+      setSelectedProducts([...updatedItems, newItem]);
+    }
   };
 
-  const clearForm = (formikProps) => {
-    formikProps.resetForm({
-      values: {
-        companyName: "",
-        firstName: "",
-        lastName: "",
-        mobilePhone: "",
-        officePhone: "",
-        email: "",
-        address: "",
-        taxable: false,
-        taxType: ""
-      },
-      errors: {
-        companyName: "",
-        firstName: "",
-        lastName: "",
-        mobilePhone: "",
-        officePhone: "",
-        email: "",
-        address: "",
-        taxable: false,
-        taxType: ""
-      },
+  const handleQuantityChange = (index, quantity) => {
+    const updatedItems = [...selectedProducts];
+    updatedItems[index].quantity = quantity;
+    setSelectedProducts(updatedItems);
+  };
+
+
+
+  const calculateAmount = (price, quantity) => {
+    return price * quantity;
+  };
+  const handleTaxableChange = (index, isChecked) => {
+    const updatedItems = [...selectedProducts];
+    updatedItems[index].taxable = isChecked;
+    setSelectedProducts(updatedItems);
+  };
+  const handleRemoveProduct = (index) => {
+    if (selectedProducts.length > 1) {
+      const updatedItems = [...selectedProducts];
+      updatedItems.splice(index, 1);
+      setSelectedProducts(updatedItems);
+    }
+  };
+
+
+  const getCustomers = async () => {
+    const fetchedCustomers = await fetchCustomers();
+    const customersData = await fetchedCustomers.json();
+    setCustomers(customersData);
+
+  };
+
+  const handleCustomerChange = (customerId) => {
+    const foundCustomer = customers.find(
+      (customer) => `${customer.id}` === customerId
+    );
+
+    setSelectedCustomer(foundCustomer);
+
+  };
+
+  const calculateTotalAmount = () => {
+    let total = 0;
+    selectedProducts.forEach((item) => {
+      total += calculateAmount(item.price, item.quantity);
     });
+    return total;
   };
 
-  const formikProps = useFormik({
-    initialValues: {
-      companyName: "",
-      firstName: "",
-      lastName: "",
-      mobilePhone: "",
-      officePhone: "",
-      email: "",
-      address: "",
-      taxable: false,
-      taxType: ""
-    },
-    validationSchema: schema,
-    onSubmit,
-  });
+  const calculateTaxAmount = () => {
+    if (selectedTax.type === '$') {
+      return selectedTax.rate;
+    } else if (selectedTax.type === '%') {
+      return (totalAmount * selectedTax.rate) / 100;
+    }
+    return 0;
+  };
+  
+  const calculateTotalAmountWithTax = () => {
+
+    return totalAmount + calculateTaxAmount();;
+  };
+  useEffect(() => {
+    const total = calculateTotalAmount();
+    setTotalAmount(total);
+  }, [selectedProducts]);
 
 
-  const {
-    values,
-    errors,
-    touched,
-    handleBlur,
-    handleChange,
-    handleSubmit,
-    setValues,
-  } = formikProps;
+  const getTaxes = async () => {
+    const fetchedTaxes = await fetchTaxes();
+    const taxesData = await fetchedTaxes.json();
+    setTaxes(taxesData);
+
+  };
+
+  const handleTaxChange = (taxId) => {
+    const foundtax = taxes.find(
+      (tax) => `${tax.id}` === taxId
+    );
+
+    setSelectedTax(foundtax);
+
+  };
+
+  useEffect(() => {
+    console.log(taxes);
+    const foundtax = taxes.find(
+      (tax) => tax.default === true
+    );
+    console.log(foundtax);
+    setSelectedTax(foundtax);
+  }, [taxes]);
+
+
   return (
     <Dialog open={open}>
       {open && (
-        <form onSubmit={handleSubmit} autoComplete="new" >
+        <form>
           <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center">
             <div className="bg-white rounded shadow-xl">
               <div className="flex items-center justify-between sticky bg-gradient-to-br from-gray-800 to-gray-700">
                 <div></div>
                 <div className="text-white text-center text-lg">
-                  {isEditMode ? "EDIT Invoice" : "New Invoice"}
+                  Invoice
                 </div>
                 <button
                   className=" bg-transparent hover:bg-gray-800 text-white font-bold py-2 px-4 rounded"
@@ -122,198 +217,255 @@ const MyPopUpForm = ({ open, close, selectedItem }) => {
                 </button>
               </div>
 
-              <div className="p-6">
-
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold">Company Name</label> <br />
+                  <label className="p-2 font-bold">Customer</label> <br />
+                  <select
+                    className="w-52 m-2 p-2 border border-gray-300 bg-inherit rounded-md"
+                    // value={item.product}
+                    onChange={(e) =>
+                      handleCustomerChange(e.target.value)
+                    }
+                  >
+                    <option value="">Select Customer</option>
+                    {customers.map((customer) => (
+                      <option
+                        key={customer.id}
+                        value={customer.id}
+                      >
+                        {customer.first_name} {customer.last_name}
+                      </option>
+                    ))}
+                  </select> <br />
+                  <label className="p-2 font-bold">Email</label> <br />
                   <input
-                    className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                    id="companyName"
-                    name="companyName"
-                    type="text"
-                    value={values.companyName}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {touched.companyName && errors.companyName && (
-                    <div className="text-red-500">
-                      {errors.companyName}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-start space-x-4">
-                  <div>
-                    <label className="font-bold">First Name</label> <br />
-                    <input
-                      className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                      id="firstName"
-                      name="firstName"
-                      type="text"
-                      value={values.firstName}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {(touched.firstName && errors.firstName) ? (
-                      <div className="text-red-500">
-                        {errors.firstName}
-                      </div>
-                    ) : (<div></div>)}
-                  </div>
-                  <div>
-                    <label className="font-bold">Last Name</label> <br />
-                    <input
-                      className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                      id="lastName"
-                      name="lastName"
-                      type="text"
-                      value={values.lastName}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.lastName && errors.lastName ? (
-                      <div className="text-red-500">
-                        {errors.lastName}
-                      </div>
-                    ) : (<div></div>)}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-start space-x-4">
-                  <div>
-                    <label className="font-bold">Mobile Phone</label> <br />
-                    <input
-                      className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                      id="mobilePhone"
-                      name="mobilePhone"
-                      type="text"
-                      value={values.mobilePhone}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {(touched.mobilePhone && errors.mobilePhone) ? (
-                      <div className="text-red-500">
-                        {errors.mobilePhone}
-                      </div>
-                    ) : (<div></div>)}
-                  </div>
-                  <div>
-                    <label className="font-bold">Office Phone</label> <br />
-                    <input
-                      className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                      id="officePhone"
-                      name="officePhone"
-                      type="text"
-                      value={values.officePhone}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.officePhone && errors.officePhone ? (
-                      <div className="text-red-500">
-                        {errors.officePhone}
-                      </div>
-                    ) : (<div></div>)}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-bold">Email</label> <br />
-                  <input
-                    className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                    className="w-52 m-2 p-2 border border-gray-300 rounded-md text-black"
                     id="email"
                     name="email"
                     type="email"
-                    value={values.email}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {touched.email && errors.email && (
-                    <div className="text-red-500">
-                      {errors.email}
-                    </div>
-                  )}
+                    value={selectedCustomer ? selectedCustomer.email : ''}
+                    disabled
+                  /> <br />
+                  <label className="p-2 font-bold">Phone</label> <br />
+
+                  <input
+                    className="w-52 m-2 p-2 border border-gray-300 rounded-md text-black"
+                    id="phone"
+                    name="phone"
+                    type="text"
+                    value={selectedCustomer ? selectedCustomer.phone : ''}
+                    disabled
+                  /> <br />
+
                 </div>
 
-                <div>
-                  <label className="font-bold">Address</label> <br />
-                  <textarea
-                    className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                    id="address"
-                    name="address"
-                    value={values.address}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {touched.address && errors.address && (
-                    <div className="text-red-500">
-                      {errors.address}
-                    </div>
-                  )}
-                </div>
 
-                <div>
-                  <label className="font-bold">
+
+
+                <div className="flex flex-col ">
+                  <div className="text-5xl mt-5">
+                    <h1>$   {calculateTotalAmountWithTax()}</h1>
+                  </div>
+
+                  <div className="mt-3">
+                    <label className="p-2 font-bold">Date</label> <br />
                     <input
-                      type="checkbox"
-                      id="taxableCheckbox"
-                      name="taxableCheckbox"
-                      checked={values.taxable}
-                      onChange={(e) => {
-                        setValues((prevValues) => ({
-                          ...prevValues,
-                          taxable: e.target.checked
-                        }));
-                      }}
+                      className="w-52 m-2 p-2 border border-gray-300 rounded-md text-black"
+                      id="date"
+                      name="date"
+                      type="date"
                     />
-                    &nbsp;Taxable
-                  </label>
-                  {values.taxable && (
-                    <div>
-                      <label className="font-bold">Choose Tax Type</label>
-                      <select
-                        className="w-full p-2 border border-gray-300 bg-inherit rounded-md"
-                        id="taxType"
-                        name="taxType"
-                        value={values.taxType}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                      >
-                        <option value="">Select Tax Type</option>
-                        <option value="Type A">Type A</option>
-                        <option value="Type B">Type B</option>
-                        <option value="Type C">Type C</option>
-                      </select>
-                    </div>
-                  )}
+                  </div>
+                  <div>
+                    <label className="p-2 font-bold">Address</label> <br />
 
+                    <input
+                      className="w-52 m-2 p-2 border border-gray-300 rounded-md text-black"
+                      id="address"
+                      name="address"
+                      type="text"
+                      value={selectedCustomer ? selectedCustomer.address : ''}
+                      disabled
+                    />
+                  </div>
                 </div>
-
-
-
 
               </div>
+
+              <Card className="h-full w-full">
+                <CardBody className="p-2 overflow-y-auto max-h-80">
+                  <table className="w-full min-w-max table-auto text-left">
+                    <thead>
+                      <tr>
+                        {TABLE_HEAD.map((head) => (
+                          <th
+                            key={head}
+                            className="border-y border-blue-gray-100 bg-blue-gray-50/50 p-4"
+                          >
+                            <Typography
+                              variant="small"
+                              color="blue-gray"
+                              className="font-normal leading-none opacity-70"
+                            >
+                              {head}
+                            </Typography>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {selectedProducts.map((item, index) => (
+                        <tr key={index}>
+                          <td className="p-4 border-b border-blue-gray-50">
+                            <div>
+                              <select
+                                className="w-full p-2 border border-gray-300 bg-inherit rounded-md"
+                                value={item.product}
+                                onChange={(e) =>
+                                  handleProductChange(index, e.target.value)
+                                }
+                              >
+                                <option value="">Select Product</option>
+                                {products.map((product) => (
+                                  <option
+                                    key={product.id}
+                                    value={product.name}
+                                  >
+                                    {product.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </td>
+                          <td className="p-4 border-b border-blue-gray-50">
+                            <input
+                              type="number"
+                              min={1}
+                              className="w-14 p-2 border rounded-md text-black"
+                              value={item.quantity}
+                              onChange={(e) =>
+                                handleQuantityChange(index, e.target.value)
+                              }
+                            />
+                          </td>
+                          <td className="p-4 border-b border-blue-gray-50">
+                            <Typography
+                              variant="small"
+                              color="blue-gray"
+                              className="font-normal opacity-70"
+                            >
+                              {item.price}
+                            </Typography>
+                          </td>
+                          <td className="p-4 border-b border-blue-gray-50">
+                            <input
+                              type="checkbox"
+                              checked={item.taxable}
+                              onChange={(e) => handleTaxableChange(index, e.target.checked)}
+                            />
+                          </td>
+                          <td className="p-4 border-b border-blue-gray-50">
+                            <Typography
+                              variant="small"
+                              color="blue-gray"
+                              className="font-normal opacity-70"
+                            >
+
+                              {calculateAmount(item.price, item.quantity)}
+                            </Typography>
+                          </td>
+                          <td className="p-4 border-b border-blue-gray-50 text-center px-4 py-2 cursor-pointer">
+                            <XCircleIcon
+                              onClick={() => handleRemoveProduct(index)}
+                              className="h-6 w-6 text-gray-600 hover:text-red-500"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+
+                  </table>
+                </CardBody>
+              </Card>
+
+              <div className="grid grid-cols-2 ">
+                <div>
+                </div>
+
+                <div className="flex items-center justify-between mx-10">
+                  <div className="text-1xl mt-5">
+                    <h1>Subtotal</h1>
+                  </div>
+                  <div className="text-1xl mt-5">
+                    <h1>{totalAmount}</h1>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <select
+                    className="w-32 p-2 border border-gray-300 bg-inherit rounded-md"
+                    value={selectedTax && selectedTax.id}
+                    onChange={(e) =>
+                      handleTaxChange(e.target.value)
+                    }
+                  >
+                    
+                    {taxes.map((tax) => (
+                      <option
+                        key={tax.id}
+                        value={tax.id}
+                      >
+                        {tax.name}
+                      </option>
+                    ))}
+                  </select>
+                  </div>
+
+                <div className="flex items-center justify-between mx-10">
+                  <div className="flex items-center justify-between ">
+                    <input
+                      className="w-9 p-2 border border-gray-300 rounded-md text-black"
+                      id="phone"
+                      name="phone"
+                      type="text"
+                      value={selectedTax && selectedTax.rate}
+                      disabled
+                    />
+                    <p className="w-9 p-2  text-black" >{selectedTax && selectedTax.type}</p>
+                  </div>
+                  <div className="text-1xl mt-2">
+                    <h1>{calculateTaxAmount()}</h1>
+                  </div>
+                </div>
+
+                <div>
+                </div>
+                <div className="flex items-center justify-between mx-10">
+                  <div className="text-1xl mt-2">
+                    <h1>Subtotal</h1>
+                  </div>
+                  <div className="text-1xl mt-2">
+                    <h1>{calculateTotalAmountWithTax()}</h1>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center justify-end space-x-2 sticky bg-gradient-to-br from-gray-800 to-gray-700">
-                <button
-                  className=" w-32 bg-gray-600 hover:bg-gray-900 text-white font-bold py-2 px-4"
-                  onClick={() => clearForm(formikProps)}
-                  type="button"
-                >
-                  Clear
-                </button>
                 <button
                   className="w-32 bg-gray-600 hover:bg-gray-900 text-white font-bold py-2 px-4"
                   type="submit"
                 >
-                  {isEditMode ? "Update" : "Save"}
+                  Save
                 </button>
               </div>
             </div>
           </div>
-        </form>
 
+        </form>
 
       )}
     </Dialog>
   );
 };
+
 export default MyPopUpForm;
