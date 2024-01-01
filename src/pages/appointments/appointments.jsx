@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { PlusCircleIcon, ArrowLeftCircleIcon, ArrowRightCircleIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
-import { format, parseISO, isSameDay, setMonth } from 'date-fns';
-import AppointmentForm from '../forms/appointmentForm';
+import { PencilSquareIcon, ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { format, parseISO, isSameDay } from 'date-fns';
+import MyPopUpForm from './form';
 import { fetchAppointments } from '@/services/fetchAppointments';
 import { Card, CardHeader, CardBody, Typography, Button, Tooltip, IconButton } from '@material-tailwind/react';
 
@@ -110,18 +110,18 @@ export function Appointments() {
                 <div className="p-2">
                     <div className='flex justify-between'>
                         <div className="flex items-center mb-4">
-                            <h2 className="text-lg font-semibold">Calendar</h2>
+                            <h2 className="text-lg font-semibold text-gray-700">Calendar</h2>
                         </div>
-                        <h1 className="text-lg font-semibold uppercase">{selected}</h1>
+                        <h1 className="text-lg font-semibold text-gray-700 uppercase">{selected}</h1>
                         <div className="flex items-center mb-4">
                             <Tooltip content="Prev">
                                 <IconButton variant="text" onClick={() => decreNumber()}>
-                                    <ArrowLeftCircleIcon className='h-8 w-8 text-blue-600 cursor-pointer' />
+                                    <ArrowLeftIcon className='h-8 w-8 text-gray-700 cursor-pointer' />
                                 </IconButton>
                             </Tooltip>
                             <Tooltip content="Next">
                                 <IconButton variant="text" onClick={() => increNumber()}>
-                                    <ArrowRightCircleIcon className='h-8 w-8 text-blue-600 cursor-pointer' />
+                                    <ArrowRightIcon className='h-8 w-8 text-gray-700 cursor-pointer' />
                                 </IconButton>
                             </Tooltip>
                         </div>
@@ -152,7 +152,7 @@ export function Appointments() {
                     </div>
                 </div>
             </CardBody>
-            <AppointmentForm selectedItem={selectedItem} setSelectedItem={setSelectedItem} open={open} handleOpen={handleOpen} refresh={refresh} setRefresh={setRefresh} />
+            <MyPopUpForm selectedItem={selectedItem} setSelectedItem={setSelectedItem} open={open} handleOpen={handleOpen} refresh={refresh} setRefresh={setRefresh} />
         </Card >
     );
 };

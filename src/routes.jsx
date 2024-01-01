@@ -44,7 +44,7 @@ export const routes = [
       },
       {
         icon: <WrenchIcon {...icon} />,
-        name: "Inspections",
+        name: "Inspection",
         path: "/inspection",
         element: <Inspection />,
       },

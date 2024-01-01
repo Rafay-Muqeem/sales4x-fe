@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Typography } from '@material-tailwind/react';
-import Taxes from '../settings/taxes';
-import Users from '../settings/users';
-import Profile from '../settings/profile';
+import Taxes from './taxes';
+import Users from './users';
+import Profile from './profile';
 import {
   Cog8ToothIcon
 } from "@heroicons/react/24/outline";
