@@ -1,58 +1,67 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-    Button,
-    Dialog,
-    DialogHeader,
-    DialogBody,
-    DialogFooter,
-    Input,
-} from "@material-tailwind/react";
+import { Dialog } from "@material-tailwind/react";
 import { addAppointment } from "@/services/addAppointment";
 import { updateAppointment } from "@/services/updateAppointment";
 import { delAppointment } from "@/services/delAppointment";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 
-function AppointmentForm({ appointmentData, setAppointmentData, open, handleOpen, refresh, setRefresh }) {
+const schema = Yup.object().shape({
+    customerName: Yup.string().required("Customer name is required"),
+    description: Yup.string(),
+    startDateTime: Yup.date().required("Start date is required"),
+    endDateTime: Yup.date().required("End date is required"),
+});
+
+function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refresh, setRefresh }) {
 
     const modalRef = useRef(null);
 
-    const [id, setId] = useState('');
-    const [formData, setFormData] = useState({
-        customerName: '',
-        description: '',
-        startDateTime: '',
-        endDateTime: '',
-    });
+    // const [id, setId] = useState('');
+    // const [formData, setFormData] = useState({
+    //     customerName: '',
+    //     description: '',
+    //     startDateTime: '',
+    //     endDateTime: '',
+    // });
+
+
     const [currentDate, setCurrentDate] = useState(getCurrentDateTimeForInput());
     const [update, setUpdate] = useState(false);
     const [error, setError] = useState(false);
 
-    const handleOutsideClick = (e) => {
-        if (modalRef.current && !modalRef.current.contains(e.target)) {
-            resetFields();
-        }
+    const handleClose = () => {
+        clearForm(formikProps);
+        setUpdate(false);
+        setSelectedItem(null);
+        handleOpen();
     };
 
-    useEffect(() => {
-        document.addEventListener('mousedown', handleOutsideClick);
+    // const handleOutsideClick = (e) => {
+    //     if (modalRef.current && !modalRef.current.contains(e.target)) {
+    //         resetFields();
+    //     }
+    // };
 
-        return () => {
-            document.removeEventListener('mousedown', handleOutsideClick);
-        };
-    }, []);
+    // useEffect(() => {
+    //     document.addEventListener('mousedown', handleOutsideClick);
+
+    //     return () => {
+    //         document.removeEventListener('mousedown', handleOutsideClick);
+    //     };
+    // }, []);
 
     useEffect(() => {
-        if (appointmentData !== '') {
+        if (selectedItem) {
             setUpdate(true);
-            setId(appointmentData.id);
-            setFormData({
-                customerName: appointmentData.customerName,
-                description: appointmentData.description,
-                startDateTime: correctDateFormat(appointmentData.startDateTime),
-                endDateTime: correctDateFormat(appointmentData.endDateTime),
-            })
+            formikProps.setValues({
+                customerName: selectedItem.customerName,
+                description: selectedItem.description,
+                startDateTime: correctDateFormat(selectedItem.startDateTime),
+                endDateTime: correctDateFormat(selectedItem.endDateTime)
+            });
         }
-        setAppointmentData('');
-    })
+    }, [selectedItem])
 
     const correctDateFormat = (date) => {
         const parsedDate = new Date(date);
@@ -96,115 +105,241 @@ function AppointmentForm({ appointmentData, setAppointmentData, open, handleOpen
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
 
+    const onSubmit = async (values, actions) => {
+        let res = '';
 
-    const handleAdd = async () => {
-
-        const inputStartDate = formData.startDateTime.split('T')[0];
-        const inputStartTime = (parseInt(formData.startDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(formData.startDateTime.split('T')[1].split(':')[1], 10);
-        const inputEndDate = formData.endDateTime.split('T')[0];
-        const inputEndTime = (parseInt(formData.endDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(formData.endDateTime.split('T')[1].split(':')[1], 10);
+        const inputStartDate = values.startDateTime.split('T')[0];
+        const inputStartTime = (parseInt(values.startDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(values.startDateTime.split('T')[1].split(':')[1], 10);
+        const inputEndDate = values.endDateTime.split('T')[0];
+        const inputEndTime = (parseInt(values.endDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(values.endDateTime.split('T')[1].split(':')[1], 10);
         const currDate = currentDate.split('T')[0];
         const currentTime = (parseInt(currentDate.split('T')[1].split(':')[0], 10) * 60) + parseInt(currentDate.split('T')[1].split(':')[1], 10);
 
-        console.log(currDate)
-        console.log(inputStartDate)
-        console.log(inputEndDate)
-
         if (inputStartTime >= inputEndTime || inputStartDate > inputEndDate) {
-            console.log('here')
             setError(true);
             setErrorFalse();
         }
 
         else if (inputStartTime <= currentTime && inputStartDate === currDate) {
-            console.log('here2')
             setError(true);
             setErrorFalse();
         }
 
         else if (inputEndTime <= currentTime && inputEndDate === currDate) {
-            console.log('here3')
             setError(true);
             setErrorFalse();
         }
 
         else {
             try {
-                const res = await addAppointment(formData);
+                if (!update) {
+                    res = await addAppointment(values);
+                }
+                else {
+                    res = await updateAppointment(selectedItem.id, values)
+                }
                 const appointment = await res.json();
-                resetFields();
                 setRefresh(!refresh);
-                handleOpen();
+                handleClose();
             } catch (error) {
                 console.log(error)
             }
         }
     };
-
-    const handleUpdate = async () => {
-
-        const inputStartDate = formData.startDateTime.split('T')[0];
-        const inputStartTime = (parseInt(formData.startDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(formData.startDateTime.split('T')[1].split(':')[1], 10);
-        const inputEndDate = formData.endDateTime.split('T')[0];
-        const inputEndTime = (parseInt(formData.endDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(formData.endDateTime.split('T')[1].split(':')[1], 10);
-        const currDate = currentDate.split('T')[0];
-        const currentTime = (parseInt(currentDate.split('T')[1].split(':')[0], 10) * 60) + parseInt(currentDate.split('T')[1].split(':')[1], 10);
-
-
-        if (inputStartTime >= inputEndTime || inputStartDate > inputEndDate) {
-            console.log('here')
-            setError(true);
-            setErrorFalse();
-        }
-
-        else if (inputStartTime <= currentTime && inputStartDate === currDate) {
-            console.log('here2')
-            setError(true);
-            setErrorFalse();
-        }
-
-        else if (inputEndTime <= currentTime && inputEndDate === currDate) {
-            console.log('here3')
-            setError(true);
-            setErrorFalse();
-        }
-
-        else {
-            try {
-                const res = await updateAppointment(id, formData);
-                const appointment = await res.json();
-                resetFields();
-                setAppointmentData('');
-                setUpdate(false);
-                setRefresh(!refresh)
-                handleOpen();
-            } catch (error) {
-                console.log(error)
-            }
-        }
-    };
-
-    const resetFields = () => {
-        setFormData({
-            customerName: '',
-            description: '',
-            startDateTime: '',
-            endDateTime: '',
-        });
-        setUpdate(false);
-    }
 
     async function handleDel(id) {
         const appointment = await delAppointment(id);
-        resetFields()
+        setSelectedItem(null)
         handleOpen()
         setRefresh(!refresh)
     }
 
+    const clearForm = (formikProps) => {
+        formikProps.resetForm({
+            values: {
+                customerName: '',
+                description: '',
+                startDateTime: '',
+                endDateTime: '',
+            },
+            errors: {
+                customerName: '',
+                description: '',
+                startDateTime: '',
+                endDateTime: '',
+            },
+        });
+    };
+
+    const formikProps = useFormik({
+        initialValues: {
+            customerName: '',
+            description: '',
+            startDateTime: '',
+            endDateTime: '',
+        },
+        validationSchema: schema,
+        onSubmit,
+    });
+
+
+    const {
+        values,
+        errors,
+        touched,
+        handleBlur,
+        handleChange,
+        handleSubmit,
+        setValues,
+    } = formikProps;
+
     return (
         <>
             <Dialog ref={modalRef} size="sm" open={open} handler={handleOpen}>
-                <DialogHeader className={error ? 'text-red-500' : ''}>{update ? 'Update' : 'Add'} Appointment</DialogHeader>
+                {open && (
+                    <form onSubmit={handleSubmit} autoComplete="new" >
+                        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center">
+                            <div className="bg-white rounded shadow-xl">
+                                <div className="flex items-center justify-between sticky bg-gradient-to-br from-gray-800 to-gray-700">
+                                    <div></div>
+                                    <div className={error ? 'text-red-500 text-center text-lg' : 'text-white text-center text-lg'} >
+                                        {update ? "EDIT APPOINTMENT" : "NEW APPOINTMENT"}
+                                    </div>
+                                    <button
+                                        className=" bg-transparent hover:bg-gray-800 text-white font-bold py-2 px-4 rounded"
+                                        onClick={handleClose}
+                                        type="button"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            strokeWidth="1.5"
+                                            stroke="currentColor"
+                                            className="w-6 h-6"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M6 18L18 6M6 6l12 12"
+                                            />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div className="p-6">
+                                    <div className="flex items-center justify-start space-x-4">
+                                        <div>
+                                            <label className="font-bold">Customer Name</label> <br />
+                                            <input
+                                                className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                                                id="customerName"
+                                                name="customerName"
+                                                type="customerName"
+                                                value={values.customerName}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
+                                            />
+                                            {touched.customerName && errors.customerName && (
+                                                <div className="text-red-500">
+                                                    {errors.customerName}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="font-bold">Description</label> <br />
+                                            <input
+                                                className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                                                id="description"
+                                                name="description"
+                                                type="description"
+                                                value={values.description}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
+                                            />
+                                            {touched.description && errors.description && (
+                                                <div className="text-red-500">
+                                                    {errors.description}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-start space-x-4">
+                                        <div>
+                                            <label className="font-bold">Start Date & Time</label> <br />
+                                            <input
+                                                className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                                                id="startDateTime"
+                                                name="startDateTime"
+                                                type="datetime-local"
+                                                min={currentDate}
+                                                value={values.startDateTime}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
+                                            />
+                                            {(touched.startDateTime && errors.startDateTime) ? (
+                                                <div className="text-red-500">
+                                                    {errors.startDateTime}
+                                                </div>
+                                            ) : (<div></div>)}
+                                        </div>
+                                        <div>
+                                            <label className="font-bold">End Date & Time</label> <br />
+                                            <input
+                                                className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                                                id="endDateTime"
+                                                name="endDateTime"
+                                                type="datetime-local"
+                                                min={currentDate}
+                                                value={values.endDateTime}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
+                                            />
+                                            {touched.endDateTime && errors.endDateTime ? (
+                                                <div className="text-red-500">
+                                                    {errors.endDateTime}
+                                                </div>
+                                            ) : (<div></div>)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-end space-x-2 sticky bg-gradient-to-br from-gray-800 to-gray-700">
+                                    {update && (
+                                        <button
+                                            className=" w-32 bg-gray-600 hover:bg-gray-900 text-white font-bold py-2 px-4"
+                                            onClick={() => handleDel(selectedItem.id)}
+                                            type="button"
+                                        >
+                                            Delete
+                                        </button>
+                                    )}
+                                    <button
+                                        className=" w-32 bg-gray-600 hover:bg-gray-900 text-white font-bold py-2 px-4"
+                                        onClick={() => clearForm(formikProps)}
+                                        type="button"
+                                    >
+                                        Clear
+                                    </button>
+                                    <button
+                                        className="w-32 bg-gray-600 hover:bg-gray-900 text-white font-bold py-2 px-4"
+                                        type="submit"
+                                    >
+                                        {update ? "Update" : "Save"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                )}
+            </Dialog>
+        </>
+    );
+}
+
+export default AppointmentForm;
+
+{/* <DialogHeader className={error ? 'text-red-500' : ''}>{update ? 'Update' : 'Add'} Appointment</DialogHeader>
                 <DialogBody>
                     <form className="flex flex-col space-y-4 ">
                         <Input
@@ -257,10 +392,4 @@ function AppointmentForm({ appointmentData, setAppointmentData, open, handleOpen
                     <Button variant="gradient" color="green" onClick={update ? handleUpdate : handleAdd} >
                         <span>{update ? 'Update' : 'Add'}</span>
                     </Button>
-                </DialogFooter>
-            </Dialog>
-        </>
-    );
-}
-
-export default AppointmentForm;
+                </DialogFooter> */}
