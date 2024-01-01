@@ -1,6 +1,6 @@
 
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { DocumentTextIcon, UserGroupIcon } from "@heroicons/react/24/solid";
+import { DocumentTextIcon, UserGroupIcon, TrashIcon } from "@heroicons/react/24/solid";
 import {
   Card,
   CardHeader,
@@ -11,24 +11,27 @@ import {
   CardFooter,
   IconButton,
   Tooltip,
+  Checkbox
 } from "@material-tailwind/react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import MyPopUpForm from "./form";
+import { fetchCustomers } from "@/services/fetchCustomers";
+import { delCustomer } from "@/services/delCustomer";
 
-const TABLE_HEAD = ["Customer Name", "Contact", "Phone", "Email", "Invoices"];
+const TABLE_HEAD = ["Customer Name", "Email", "Phone", "Address", "Taxable", "Invoices", "Actions"];
 
 // Service to fetch data from the provided API
-const fetchFakeData = async () => {
-  try {
-    const response = await fetch('https://fakestoreapi.com/products');
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching data:", error);
-    return [];
-  }
-};
+// const fetchFakeData = async () => {
+//   try {
+//     const response = await fetch('https://fakestoreapi.com/products');
+//     const data = await response.json();
+//     return data;
+//   } catch (error) {
+//     console.error("Error fetching data:", error);
+//     return [];
+//   }
+// };
 
 export function Customers() {
   const [selectAll, setSelectAll] = useState(false);
@@ -37,6 +40,7 @@ export function Customers() {
   const [finalItems, setFinalItems] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [refresh, setRefresh] = useState(false);
 
   // for edit of a customer 
   const [selectedItem, setSelectedItem] = useState(null);
@@ -50,32 +54,26 @@ export function Customers() {
 
   // Fetch data from API when the component mounts
   useEffect(() => {
-    const fetchData = async () => {
-      const data = await fetchFakeData();
-      setFinalItems(data);
-    };
+    getCustomers();
+  }, [refresh]);
 
-    fetchData();
-  }, []);
-
-// Function to handle header checkbox change
-const handleSelectAll = (event) => {
-  const checked = event.target.checked;
-  setSelectAll(checked);
-
-  if (checked) {
-    const allRowsIndexes = currentItems.map((_, index) => indexOfFirstItem + index);
-    setSelectedRows(allRowsIndexes);
-  } else {
-    setSelectedRows([]);
+  const getCustomers = async () => {
+    const customers = await fetchCustomers();
+    setFinalItems(await customers.json());
   }
-};
 
+  // Function to handle header checkbox change
+  const handleSelectAll = (event) => {
+    const checked = event.target.checked;
+    setSelectAll(checked);
 
-
-
-
-
+    if (checked) {
+      const allRowsIndexes = currentItems.map((_, index) => indexOfFirstItem + index);
+      setSelectedRows(allRowsIndexes);
+    } else {
+      setSelectedRows([]);
+    }
+  };
 
   // Function to handle individual row checkbox change
   const handleRowSelect = (index) => {
@@ -99,11 +97,10 @@ const handleSelectAll = (event) => {
   };
 
   const filteredRows = finalItems.filter(
-    ({ title, category, description, id }) =>
-      title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      description.toLowerCase().includes(searchQuery.toLowerCase()) 
-      // phone.toLowerCase().includes(searchQuery.toLowerCase())
+    ({ firstName, lastName, email }) =>
+      firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Calculate the indexes of the items to display based on pagination
@@ -118,22 +115,29 @@ const handleSelectAll = (event) => {
     setCurrentPage(1);
   };
 
-// Function to handle deletion of selected items
-const handleDelete = () => {
-  // Calculate the indexes of the selected rows within the full data set
-  const selectedIndexes = selectedRows.map((index) => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return startIndex + index;
-  });
+  // Function to handle deletion of selected items
+  const handleDelete = async (id) => {
+    // Calculate the indexes of the selected rows within the full data set
+    // const selectedIndexes = selectedRows.map((index) => {
+    //   const startIndex = (currentPage - 1) * itemsPerPage;
+    //   return startIndex + index;
+    // });
 
-  // Create a new array containing the rows that are not selected
-  const updatedItems = finalItems.filter((_, index) => !selectedIndexes.includes(index));
-  
-  // Update finalItems and clear selectedRows
-  setFinalItems(updatedItems);
-  setSelectedRows([]);
-  setSelectAll(false);
-};
+    // Create a new array containing the rows that are not selected
+    // const updatedItems = finalItems.filter((_, index) => !selectedIndexes.includes(index));
+
+    // Update finalItems and clear selectedRows
+    // setFinalItems(updatedItems);
+    // setSelectedRows([]);
+    // setSelectAll(false);
+
+    try {
+      const res = await delCustomer(id);
+      setRefresh(!refresh);
+  } catch (error) {
+      console.log(error)
+  }
+  };
 
 
   // Function to handle pagination
@@ -174,9 +178,9 @@ const handleDelete = () => {
                 <Button className="w-full bg-blue-900 lg:w-auto" size="md" onClick={openPopup} >
                   New
                 </Button>
-                <Button className="w-full bg-red-900 lg:w-auto" size="md" onClick={handleDelete} disabled={selectedRows.length == 0} >
+                {/* <Button className="w-full bg-red-900 lg:w-auto" size="md" onClick={handleDelete} disabled={selectedRows.length == 0} >
                   Delete
-                </Button>
+                </Button> */}
               </div>
             </div>
             <div className="flex items-center mt-4 lg:mt-0 lg:ml-auto">
@@ -227,7 +231,7 @@ const handleDelete = () => {
               </tr>
             </thead>
             <tbody>
-              {currentItems.map(({ title, category, description, id }, index) => {
+              {currentItems.map(({ firstName, lastName, email, phone, address, taxable, id }, index) => {
                 const isLast = index === currentItems.length - 1;
                 const classes = isLast
                   ? "p-4"
@@ -248,10 +252,10 @@ const handleDelete = () => {
                         className="text-blue-gray font-normal hover:underline"
                         onClick={() => {
                           handleEditCustomer(index);
-                          openPopup(); 
+                          openPopup();
                         }}
                       >
-                        {title}
+                        {firstName} {lastName}
                       </Link>
                     </td>
                     <td className={classes}>
@@ -260,7 +264,7 @@ const handleDelete = () => {
                         color="blue-gray"
                         className="font-normal"
                       >
-                        {category}
+                        {email}
                       </Typography>
                     </td>
                     <td className={classes}>
@@ -269,7 +273,7 @@ const handleDelete = () => {
                         color="blue-gray"
                         className="font-normal opacity-70"
                       >
-                        {category}
+                        {phone}
                       </Typography>
                     </td>
                     <td className={classes}>
@@ -278,13 +282,23 @@ const handleDelete = () => {
                         color="blue-gray"
                         className="font-normal opacity-70"
                       >
-                        {id}
+                        {address}
                       </Typography>
+                    </td>
+                    <td className={classes}>
+                      <Checkbox color="green" checked={taxable ? 'checked' : ''} readOnly />
                     </td>
                     <td className={classes}>
                       <Tooltip content="Invoice">
                         <IconButton variant="text">
                           <DocumentTextIcon className="h-6 w-6" />
+                        </IconButton>
+                      </Tooltip>
+                    </td>
+                    <td className={classes}>
+                      <Tooltip content="Delete Customer">
+                        <IconButton variant="text" onClick={() => handleDelete(id)}>
+                          <TrashIcon className="h-6 w-6 text-red-600" />
                         </IconButton>
                       </Tooltip>
                     </td>
@@ -323,7 +337,7 @@ const handleDelete = () => {
         </CardFooter>
 
       </Card>
-      <MyPopUpForm open={isOpen} close={closePopup} selectedItem={selectedItem} />
+      <MyPopUpForm open={isOpen} close={closePopup} selectedItem={selectedItem} setSelectedItem={setSelectedItem} refresh={refresh} setRefresh={setRefresh} />
     </>
   );
 }

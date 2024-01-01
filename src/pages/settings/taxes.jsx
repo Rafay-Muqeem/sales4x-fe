@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { XCircleIcon, PencilIcon, CheckIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
 import { Card } from "@material-tailwind/react";
-import TaxForm from "../forms/taxForm";
+import TaxForm from "./taxForm";
 import { fetchTaxes } from "@/services/fetchTaxes";
 import { delTax } from "@/services/delTax";
 
