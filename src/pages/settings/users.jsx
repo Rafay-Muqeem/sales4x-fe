@@ -3,7 +3,7 @@ import {
   XCircleIcon, PencilIcon, PlusCircleIcon
 } from "@heroicons/react/24/outline";
 import { Card } from "@material-tailwind/react";
-import UserForm from "../forms/userForm";
+import UserForm from "./userForm";
 import { fetchUsers } from "@/services/fetchUsers";
 import { delUser } from "@/services/delUser";
 import { fetchBusiness } from "@/services/fetchBusiness";
