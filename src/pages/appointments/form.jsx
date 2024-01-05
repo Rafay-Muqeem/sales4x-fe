@@ -8,10 +8,10 @@ import * as Yup from "yup";
 
 const schema = Yup.object().shape({
     customerName: Yup.string().required("Customer name is required"),
-    customerEmail: Yup.string(),
+    customerEmail: Yup.string().email('Invalid email'),
     description: Yup.string(),
     startDateTime: Yup.date().required("Start date is required"),
-    endTime: Yup.string().required("End Time is required"),
+    endDateTime: Yup.string().required("End Time is required"),
     sendEmail: Yup.boolean()
 });
 
@@ -31,13 +31,12 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
     useEffect(() => {
         if (selectedItem) {
             setUpdate(true);
-            console.log(selectedItem.endTime);
             formikProps.setValues({
                 customerName: selectedItem.customerName,
                 customerEmail: selectedItem.customerEmail,
                 description: selectedItem.description,
                 startDateTime: correctDateFormat(selectedItem.startDateTime),
-                endTime: selectedItem.endTime,
+                endDateTime: correctTimeFormat(selectedItem.endDateTime),
                 sendEmail: selectedItem.sendEmail,
             });
         }
@@ -53,6 +52,15 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
         const seconds = String(parsedDate.getSeconds()).padStart(2, '0');
 
         return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    }
+
+    const correctTimeFormat = (date) => {
+        const parsedDate = new Date(date);
+        const hours = String(parsedDate.getHours()).padStart(2, '0');
+        const minutes = String(parsedDate.getMinutes()).padStart(2, '0');
+        const seconds = String(parsedDate.getSeconds()).padStart(2, '0');
+
+        return `${hours}:${minutes}:${seconds}`;
     }
 
     useEffect(() => {
@@ -86,36 +94,40 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
     };
 
     const onSubmit = async (values, actions) => {
-
-        const inputStartDate = values.startDateTime.split('T')[0];
+        
+        const inputDate = values.startDateTime.split('T')[0];
         const inputStartTime = (parseInt(values.startDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(values.startDateTime.split('T')[1].split(':')[1], 10);
-        const inputEndTime = (parseInt(values.endTime.split(':')[0], 10) * 60) + parseInt(values.endTime.split(':')[1], 10);
+        const inputEndTime = (parseInt(values.endDateTime.split(':')[0], 10) * 60) + parseInt(values.endDateTime.split(':')[1], 10);
         const currDate = currentDate.split('T')[0];
         const currentTime = (parseInt(currentDate.split('T')[1].split(':')[0], 10) * 60) + parseInt(currentDate.split('T')[1].split(':')[1], 10);
+        
+        const inputEndDateTime = `${inputDate}T${values.endDateTime}`.trim();
+        const updatedValues = { ...values, endDateTime: inputEndDateTime };
 
         if (inputStartTime >= inputEndTime) {
             setError(true);
             setErrorFalse();
         }
 
-        else if (inputStartTime <= currentTime && inputStartDate === currDate) {
+        else if (inputStartTime <= currentTime && inputDate === currDate) {
             setError(true);
             setErrorFalse();
         }
 
-        else if (inputEndTime <= currentTime) {
+        else if (inputEndTime <= currentTime && inputDate === currDate) {
             setError(true);
             setErrorFalse();
         }
 
         else {
+
             try {
                 if (!update) {
-                    const res = await addAppointment(values);
+                    const res = await addAppointment(updatedValues);
                     const appointment = await res.json();
                 }
                 else {
-                    const res = await updateAppointment(selectedItem.id, values);
+                    const res = await updateAppointment(selectedItem.id, updatedValues);
                     const appointment = await res.json();
                 }
                 setRefresh(!refresh);
@@ -128,6 +140,8 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
 
     async function handleDel(id) {
         const appointment = await delAppointment(id);
+        clearForm(formikProps);
+        setUpdate(false);
         setSelectedItem(null)
         handleOpen()
         setRefresh(!refresh)
@@ -140,7 +154,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                 customerEmail: '',
                 description: '',
                 startDateTime: '',
-                endTime: '',
+                endDateTime: '',
                 sendEmail: false,
             },
             errors: {
@@ -148,7 +162,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                 customerEmail: '',
                 description: '',
                 startDateTime: '',
-                endTime: '',
+                endDateTime: '',
                 sendEmail: false,
             },
         });
@@ -160,7 +174,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
             customerEmail: '',
             description: '',
             startDateTime: '',
-            endTime: '',
+            endDateTime: '',
             sendEmail: false,
         },
         validationSchema: schema,
@@ -172,6 +186,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
         values,
         errors,
         touched,
+        setFieldValue,
         handleBlur,
         handleChange,
         handleSubmit,
@@ -290,16 +305,16 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                                             <label className="font-bold">End Time</label> <br />
                                             <input
                                                 className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                                                id="endTime"
-                                                name="endTime"
+                                                id="endDateTime"
+                                                name="endDateTime"
                                                 type="time"
-                                                value={values.endTime}
+                                                value={values.endDateTime}
                                                 onChange={handleChange}
                                                 onBlur={handleBlur}
                                             />
-                                            {touched.endTime && errors.endTime ? (
+                                            {touched.endDateTime && errors.endDateTime ? (
                                                 <div className="text-red-500">
-                                                    {errors.endTime}
+                                                    {errors.endDateTime}
                                                 </div>
                                             ) : (<div></div>)}
                                         </div>
