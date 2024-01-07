@@ -1,72 +1,43 @@
-import React, { useState } from "react";
-import { Input, Select, Button, Option, Alert } from "@material-tailwind/react";
-
+import React, { useEffect, useState } from "react";
+import { Input, Select, Button, Option } from "@material-tailwind/react";
+import { State } from '../../state/Context'
 function Profile() {
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [email, setEmail] = useState('');
-    const [business, setBusiness] = useState('');
+    const { state, dispatch } = State();
+    const [invoice, setInvoice] = useState(state.Settings.General.invoice);
     const [currentPass, setCurrentPass] = useState('');
     const [newPass, setNewPass] = useState('');
     const [reEnterPass, setReEnterPass] = useState('');
 
-
-    const options = [
-        { value: 'A, California', label: 'Business A' },
-        { value: 'B, Texas', label: 'Business B' },
-        { value: 'C, Dallas', label: 'Business C' },
+    const invoiceOptions = [
+        { value: 'current', label: 'current' },
+        { value: 'all', label: 'all' },
     ];
 
-    const handleSaveClick = () => {
-        console.log(firstName)
-        console.log(email)
-        console.log(business)
-        setFirstName("");
-        setLastName("");
-        setEmail("");
-        setBusiness("");
+    const handleSaveClick = async () => {
+        console.log(invoice);
+        dispatch({ type: 'SET_INVOICE', payload: invoice });
     }
+
+    useEffect(() => {
+        console.log(state.Settings.General.invoice);
+    }, [state.Settings])
 
     return (
         <div className="flex flex-col w-full bg-transparent rounded-md">
             <div className="border-b-2 pb-4 mt-5 mr-10">
-                <h2 className="text-lg font-semibold mb-4">Contact:</h2>
+                <h2 className="text-lg font-semibold mb-4">General:</h2>
                 <form className="flex flex-col space-y-4 w-48">
-                    <Input
-                        label="First Name"
-                        type="text"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        size="md"
-                    />
-
-                    <Input
-                        label="Last Name"
-                        type="text"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        size="md"
-                    />
-
-                    <Input
-                        label="Email Address"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        size="md"
-                    />
-
                     <Select
-                        label="Select Business"
+                        label="Invoice Setting"
                         animate={{
                             mount: { y: 0 },
                             unmount: { y: 25 },
                         }}
-                        value={business}
-                        onChange={(value) => setBusiness(value)}
+                        value={state.Settings.General.invoice}
+                        onChange={(value) => setInvoice(value)}
                         size="md"
                     >
-                        {options.map((option) => (
+                        {invoiceOptions.map((option) => (
                             <Option key={option.value} value={option.value}>{option.label}</Option>
                         ))}
                     </Select>
@@ -99,7 +70,7 @@ function Profile() {
                         onChange={(e) => setReEnterPass(e.target.value)}
                     />
 
-                    <Button onClick={handleSaveClick}>Save</Button>
+                    <Button >Save</Button>
                 </form>
             </div>
         </div>
