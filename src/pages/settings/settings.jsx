@@ -12,7 +12,7 @@ export function Settings() {
 
   const sections = {
     profile: {
-      title: 'Profile Settings',
+      title: 'General Settings',
       component: <Profile />
     },
     tax: {
