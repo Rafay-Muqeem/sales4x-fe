@@ -26,7 +26,7 @@ const TABLE_HEAD = [
   "Amount",
   "Action"
 ]
-const MyPopUpForm = ({ open, close,selectedInvoice }) => {
+const MyPopUpForm = ({ refresh, setRefresh, open, close,selectedInvoice }) => {
   console.log(selectedInvoice);
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -72,6 +72,8 @@ const MyPopUpForm = ({ open, close,selectedInvoice }) => {
       "products":selectedProductIds,
     };
     const res = await addInvoice(data)
+    setRefresh(!refresh);
+    handleClose();
     console.log(res);
     
   };
@@ -267,7 +269,7 @@ const MyPopUpForm = ({ open, close,selectedInvoice }) => {
                         key={customer.id}
                         value={customer.id}
                       >
-                        {customer.first_name} {customer.last_name}
+                        {customer.firstName} {customer.lastName}
                       </option>
                     ))}
                   </select> <br />

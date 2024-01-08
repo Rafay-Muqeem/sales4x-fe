@@ -10,7 +10,7 @@ import {
   IconButton,
   Tooltip,
 } from "@material-tailwind/react";
-import {  DocumentTextIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/solid";
+import {  DocumentTextIcon, PencilIcon, TrashIcon,PrinterIcon } from "@heroicons/react/24/solid";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 
 import MyPopUpForm from "./form";
@@ -18,7 +18,7 @@ import { fetchInvoices } from "@/services/fetchInvoices";
 import { delInvoice } from "@/services/delInvoice";
 
 
-const TABLE_HEAD = ["Customer", "View", "Status", "Total", "Invoice Date", "Make", "Model", "Year", "Actions"];
+const TABLE_HEAD = ["Customer", "Status", "Total", "Invoice Date", "Make", "Model", "Year", "Actions"];
 
 export function Invoice() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,8 +68,8 @@ export function Invoice() {
   const indexOfLastItem = indexOfFirstItem + itemsPerPage;
   const filteredRows = invoices.filter(
     ({ Customer }) =>
-      Customer['first_name'].toLowerCase().includes(searchQuery.toLowerCase()) || 
-      Customer['last_name'].toLowerCase().includes(searchQuery.toLowerCase())
+      Customer['firstName'].toLowerCase().includes(searchQuery.toLowerCase()) || 
+      Customer['lastName'].toLowerCase().includes(searchQuery.toLowerCase())
   );
   const currentItems = filteredRows.slice(indexOfFirstItem, indexOfLastItem);
 
@@ -170,18 +170,10 @@ export function Invoice() {
                         className="font-normal"
                        
                       >
-                        {Customer['first_name']} {Customer['last_name']}
+                        {Customer['firstName']} {Customer['lastName']}
                       </Typography>
                     </td>
-                    <td className={classes}>
-                      <Typography
-                        variant="small"
-                        color="blue-gray"
-                        className="font-normal"
-                      >
-                        {id}
-                      </Typography>
-                    </td>
+
                     <td className={classes}>
                       <Typography
                         variant="small"
@@ -253,6 +245,11 @@ export function Invoice() {
                           <TrashIcon className="h-6 w-6" />
                         </IconButton>
                       </Tooltip>
+                      <Tooltip content="Print Invoice">
+                        <IconButton variant="text"  >
+                          <PrinterIcon className="h-6 w-6" />
+                        </IconButton>
+                      </Tooltip>
                     </td>
                   </tr>
                 );
@@ -289,7 +286,7 @@ export function Invoice() {
         </CardFooter>
 
       </Card>
-     <MyPopUpForm open={isOpen} close={closePopup} selectedInvoice={selectedInvoice} />
+     <MyPopUpForm refresh={refresh} setRefresh={setRefresh} open={isOpen} close={closePopup} selectedInvoice={selectedInvoice} />
     </>
   );
-}
+}   
