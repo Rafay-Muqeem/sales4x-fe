@@ -1,6 +1,7 @@
-export async function addTax(data){
+export async function addInvoice(data){
+    console.log(data);
     try {
-        const tax = await fetch("https://solutions4x.com/api/tax/create", {
+        const invoice = await fetch("https://solutions4x.com/api/invoice/create", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -8,7 +9,7 @@ export async function addTax(data){
             body: JSON.stringify(data)
         })
        
-        return tax;
+        return invoice;
 
     } catch (error) {
         console.log(error);

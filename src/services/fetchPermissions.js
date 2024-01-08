@@ -1,6 +1,6 @@
 export async function fetchPermissions(){
     try {
-        const permissions = await fetch("http://localhost:5000/api/permission/", {
+        const permissions = await fetch("https://solutions4x.com/api/permission/", {
             method: "GET",
         })
        

@@ -1,6 +1,6 @@
 export async function fetchCustomers(){
     try {
-        const customers = await fetch("http://localhost:5000/api/customer/", {
+        const customers = await fetch("https://solutions4x.com/api/customer/", {
             method: "GET",
         })
        
@@ -8,5 +8,5 @@ export async function fetchCustomers(){
 
     } catch (error) {
         console.log(error);
-    }
+    }users
 }

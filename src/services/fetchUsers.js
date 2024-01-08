@@ -1,6 +1,6 @@
 export async function fetchUsers(){
     try {
-        const users = await fetch("http://localhost:5000/api/user/", {
+        const users = await fetch("https://solutions4x.com/api/user/", {
             method: "GET",
         })
        

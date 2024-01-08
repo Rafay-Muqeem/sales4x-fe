@@ -1,6 +1,6 @@
 export async function addProduct(data){
     try {
-        const product = await fetch("http://localhost:5000/api/product/create", {
+        const product = await fetch("https://solutions4x.com/api/product/create", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

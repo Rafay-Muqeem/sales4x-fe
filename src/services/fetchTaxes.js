@@ -1,6 +1,6 @@
 export async function fetchTaxes(){
     try {
-        const taxes = await fetch("http://localhost:5000/api/tax/", {
+        const taxes = await fetch("https://solutions4x.com/api/tax/", {
             method: "GET",
         })
        

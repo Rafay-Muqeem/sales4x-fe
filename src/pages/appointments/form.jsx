@@ -17,6 +17,7 @@ const schema = Yup.object().shape({
 
 function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refresh, setRefresh }) {
 
+
     const [currentDate, setCurrentDate] = useState(getCurrentDateTimeForInput());
     const [update, setUpdate] = useState(false);
     const [error, setError] = useState(false);
@@ -28,12 +29,12 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
         handleOpen();
     };
 
+  
     useEffect(() => {
         if (selectedItem) {
             setUpdate(true);
             formikProps.setValues({
                 customerName: selectedItem.customerName,
-                customerEmail: selectedItem.customerEmail,
                 description: selectedItem.description,
                 startDateTime: correctDateFormat(selectedItem.startDateTime),
                 endDateTime: correctTimeFormat(selectedItem.endDateTime),
@@ -85,7 +86,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
     function getCurrentDateTimeForInput() {
         const now = new Date();
         const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are zero-based
         const day = String(now.getDate()).padStart(2, '0');
         const hours = String(now.getHours()).padStart(2, '0');
         const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -130,6 +131,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                     const res = await updateAppointment(selectedItem.id, updatedValues);
                     const appointment = await res.json();
                 }
+                const appointment = await res.json();
                 setRefresh(!refresh);
                 handleClose();
             } catch (error) {
@@ -151,7 +153,6 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
         formikProps.resetForm({
             values: {
                 customerName: '',
-                customerEmail: '',
                 description: '',
                 startDateTime: '',
                 endDateTime: '',
@@ -159,7 +160,6 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
             },
             errors: {
                 customerName: '',
-                customerEmail: '',
                 description: '',
                 startDateTime: '',
                 endDateTime: '',
@@ -171,7 +171,6 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
     const formikProps = useFormik({
         initialValues: {
             customerName: '',
-            customerEmail: '',
             description: '',
             startDateTime: '',
             endDateTime: '',
@@ -195,7 +194,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
 
     return (
         <>
-            <Dialog size="sm" open={open} handler={handleOpen}>
+            <Dialog ref={modalRef} size="sm" open={open} handler={handleOpen}>
                 {open && (
                     <form onSubmit={handleSubmit} autoComplete="new" >
                         <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center">
@@ -228,58 +227,41 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                                 </div>
 
                                 <div className="p-6">
-                                    <div>
-                                        <label className="font-bold">Customer Name</label> <br />
-                                        <input
-                                            className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                                            id="customerName"
-                                            name="customerName"
-                                            type="customerName"
-                                            value={values.customerName}
-                                            onChange={handleChange}
-                                            onBlur={handleBlur}
-                                        />
-                                        {touched.customerName && errors.customerName && (
-                                            <div className="text-red-500">
-                                                {errors.customerName}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="font-bold">Customer Email</label> <br />
-                                        <input
-                                            className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                                            id="customerEmail"
-                                            name="customerEmail"
-                                            type="customerEmail"
-                                            value={values.customerEmail}
-                                            onChange={handleChange}
-                                            onBlur={handleBlur}
-                                        />
-                                        {touched.customerEmail && errors.customerEmail && (
-                                            <div className="text-red-500">
-                                                {errors.customerEmail}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="font-bold">Description</label> <br />
-                                        <input
-                                            className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
-                                            id="description"
-                                            name="description"
-                                            type="description"
-                                            value={values.description}
-                                            onChange={handleChange}
-                                            onBlur={handleBlur}
-                                        />
-                                        {touched.description && errors.description && (
-                                            <div className="text-red-500">
-                                                {errors.description}
-                                            </div>
-                                        )}
+                                    <div className="flex items-center justify-start space-x-4">
+                                        <div>
+                                            <label className="font-bold">Customer Name</label> <br />
+                                            <input
+                                                className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                                                id="customerName"
+                                                name="customerName"
+                                                type="customerName"
+                                                value={values.customerName}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
+                                            />
+                                            {touched.customerName && errors.customerName && (
+                                                <div className="text-red-500">
+                                                    {errors.customerName}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="font-bold">Description</label> <br />
+                                            <input
+                                                className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                                                id="description"
+                                                name="description"
+                                                type="description"
+                                                value={values.description}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
+                                            />
+                                            {touched.description && errors.description && (
+                                                <div className="text-red-500">
+                                                    {errors.description}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center justify-start space-x-4">
@@ -302,7 +284,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                                             ) : (<div></div>)}
                                         </div>
                                         <div>
-                                            <label className="font-bold">End Time</label> <br />
+                                            <label className="font-bold">End Date & Time</label> <br />
                                             <input
                                                 className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
                                                 id="endDateTime"
@@ -318,23 +300,6 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                                                 </div>
                                             ) : (<div></div>)}
                                         </div>
-                                    </div>
-                                    <div>
-                                        <label className="font-bold">
-                                            <input
-                                                type="checkbox"
-                                                id="sendEmail"
-                                                name="sendEmail"
-                                                checked={values.sendEmail}
-                                                onChange={(e) => {
-                                                    setValues((prevValues) => ({
-                                                        ...prevValues,
-                                                        sendEmail: e.target.checked
-                                                    }));
-                                                }}
-                                            />
-                                            &nbsp;Send Email
-                                        </label>
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-end space-x-2 sticky bg-gradient-to-br from-gray-800 to-gray-700">
@@ -365,7 +330,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                         </div>
                     </form>
                 )}
-            </Dialog >
+            </Dialog>
         </>
     );
 }

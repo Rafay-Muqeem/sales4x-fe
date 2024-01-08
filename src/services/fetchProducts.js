@@ -1,6 +1,6 @@
 export async function fetchProducts(){
     try {
-        const products = await fetch("http://localhost:5000/api/product/", {
+        const products = await fetch("https://solutions4x.com/api/product/", {
             method: "GET",
         })
        
@@ -8,5 +8,5 @@ export async function fetchProducts(){
 
     } catch (error) {
         console.log(error);
-    }
+    }users
 }
