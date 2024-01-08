@@ -8,22 +8,14 @@ import * as Yup from "yup";
 
 const schema = Yup.object().shape({
     customerName: Yup.string().required("Customer name is required"),
+    customerEmail: Yup.string().email('Invalid email'),
     description: Yup.string(),
     startDateTime: Yup.date().required("Start date is required"),
-    endDateTime: Yup.date().required("End date is required"),
+    endDateTime: Yup.string().required("End Time is required"),
+    sendEmail: Yup.boolean()
 });
 
 function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refresh, setRefresh }) {
-
-    const modalRef = useRef(null);
-
-    // const [id, setId] = useState('');
-    // const [formData, setFormData] = useState({
-    //     customerName: '',
-    //     description: '',
-    //     startDateTime: '',
-    //     endDateTime: '',
-    // });
 
 
     const [currentDate, setCurrentDate] = useState(getCurrentDateTimeForInput());
@@ -37,20 +29,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
         handleOpen();
     };
 
-    // const handleOutsideClick = (e) => {
-    //     if (modalRef.current && !modalRef.current.contains(e.target)) {
-    //         resetFields();
-    //     }
-    // };
-
-    // useEffect(() => {
-    //     document.addEventListener('mousedown', handleOutsideClick);
-
-    //     return () => {
-    //         document.removeEventListener('mousedown', handleOutsideClick);
-    //     };
-    // }, []);
-
+  
     useEffect(() => {
         if (selectedItem) {
             setUpdate(true);
@@ -58,7 +37,8 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                 customerName: selectedItem.customerName,
                 description: selectedItem.description,
                 startDateTime: correctDateFormat(selectedItem.startDateTime),
-                endDateTime: correctDateFormat(selectedItem.endDateTime)
+                endDateTime: correctTimeFormat(selectedItem.endDateTime),
+                sendEmail: selectedItem.sendEmail,
             });
         }
     }, [selectedItem])
@@ -73,6 +53,15 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
         const seconds = String(parsedDate.getSeconds()).padStart(2, '0');
 
         return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    }
+
+    const correctTimeFormat = (date) => {
+        const parsedDate = new Date(date);
+        const hours = String(parsedDate.getHours()).padStart(2, '0');
+        const minutes = String(parsedDate.getMinutes()).padStart(2, '0');
+        const seconds = String(parsedDate.getSeconds()).padStart(2, '0');
+
+        return `${hours}:${minutes}:${seconds}`;
     }
 
     useEffect(() => {
@@ -106,37 +95,41 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
     };
 
     const onSubmit = async (values, actions) => {
-        let res = '';
-
-        const inputStartDate = values.startDateTime.split('T')[0];
+        
+        const inputDate = values.startDateTime.split('T')[0];
         const inputStartTime = (parseInt(values.startDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(values.startDateTime.split('T')[1].split(':')[1], 10);
-        const inputEndDate = values.endDateTime.split('T')[0];
-        const inputEndTime = (parseInt(values.endDateTime.split('T')[1].split(':')[0], 10) * 60) + parseInt(values.endDateTime.split('T')[1].split(':')[1], 10);
+        const inputEndTime = (parseInt(values.endDateTime.split(':')[0], 10) * 60) + parseInt(values.endDateTime.split(':')[1], 10);
         const currDate = currentDate.split('T')[0];
         const currentTime = (parseInt(currentDate.split('T')[1].split(':')[0], 10) * 60) + parseInt(currentDate.split('T')[1].split(':')[1], 10);
+        
+        const inputEndDateTime = `${inputDate}T${values.endDateTime}`.trim();
+        const updatedValues = { ...values, endDateTime: inputEndDateTime };
 
-        if (inputStartTime >= inputEndTime || inputStartDate > inputEndDate) {
+        if (inputStartTime >= inputEndTime) {
             setError(true);
             setErrorFalse();
         }
 
-        else if (inputStartTime <= currentTime && inputStartDate === currDate) {
+        else if (inputStartTime <= currentTime && inputDate === currDate) {
             setError(true);
             setErrorFalse();
         }
 
-        else if (inputEndTime <= currentTime && inputEndDate === currDate) {
+        else if (inputEndTime <= currentTime && inputDate === currDate) {
             setError(true);
             setErrorFalse();
         }
 
         else {
+
             try {
                 if (!update) {
-                    res = await addAppointment(values);
+                    const res = await addAppointment(updatedValues);
+                    const appointment = await res.json();
                 }
                 else {
-                    res = await updateAppointment(selectedItem.id, values)
+                    const res = await updateAppointment(selectedItem.id, updatedValues);
+                    const appointment = await res.json();
                 }
                 const appointment = await res.json();
                 setRefresh(!refresh);
@@ -149,6 +142,8 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
 
     async function handleDel(id) {
         const appointment = await delAppointment(id);
+        clearForm(formikProps);
+        setUpdate(false);
         setSelectedItem(null)
         handleOpen()
         setRefresh(!refresh)
@@ -161,12 +156,14 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                 description: '',
                 startDateTime: '',
                 endDateTime: '',
+                sendEmail: false,
             },
             errors: {
                 customerName: '',
                 description: '',
                 startDateTime: '',
                 endDateTime: '',
+                sendEmail: false,
             },
         });
     };
@@ -177,6 +174,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
             description: '',
             startDateTime: '',
             endDateTime: '',
+            sendEmail: false,
         },
         validationSchema: schema,
         onSubmit,
@@ -187,6 +185,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
         values,
         errors,
         touched,
+        setFieldValue,
         handleBlur,
         handleChange,
         handleSubmit,
@@ -290,8 +289,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
                                                 className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
                                                 id="endDateTime"
                                                 name="endDateTime"
-                                                type="datetime-local"
-                                                min={currentDate}
+                                                type="time"
                                                 value={values.endDateTime}
                                                 onChange={handleChange}
                                                 onBlur={handleBlur}
