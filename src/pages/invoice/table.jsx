@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardHeader,
@@ -10,22 +10,28 @@ import {
   IconButton,
   Tooltip,
 } from "@material-tailwind/react";
-import {  DocumentTextIcon, PencilIcon, TrashIcon,PrinterIcon } from "@heroicons/react/24/solid";
+import { DocumentTextIcon, PencilIcon, TrashIcon, PrinterIcon } from "@heroicons/react/24/solid";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-
 import MyPopUpForm from "./form";
+import PrintView from "./printView";
 import { fetchInvoices } from "@/services/fetchInvoices";
 import { delInvoice } from "@/services/delInvoice";
+import { Link } from "react-router-dom";
+import { State } from "../../state/Context";
+import ReactToPrint from "react-to-print";
 
-
-const TABLE_HEAD = ["Customer", "Status", "Total", "Invoice Date", "Make", "Model", "Year", "Actions"];
+const TABLE_HEAD = ["Customer", "Status", "Payment Method", "Total", "Invoice Date", "Vehicle", "Actions"];
 
 export function Invoice() {
+  const componentRef = useRef();
+
+  const { state } = State();
   const [searchQuery, setSearchQuery] = useState("");
   const [invoices, setInvoices] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [refresh, setRefresh] = useState(false);
+  const [printInvoice, setPrintInvoice] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -33,19 +39,22 @@ export function Invoice() {
     getInvoices();
   }, [refresh]);
 
+  const getInvoices = async () => {
+    const fetchedInvoices = await fetchInvoices();
+    const totalInvoices = await fetchedInvoices.json();
+    if (state.Settings.General.invoice === 'all') {
+      setInvoices(totalInvoices);
+    }
+    else if (state.Settings.General.invoice === 'current') {
+      setInvoices(totalInvoices.filter(invoice => invoice.current === true))
+    }
+  };
+
   const handleEditInvoice = (index) => {
     // Assuming currentItems holds the filtered rows for display
     const selected = currentItems[index];
     setSelectedInvoice(selected);
   };
-  const getInvoices = async () => {
-    const fetchedInvoices = await fetchInvoices();
-    setInvoices(await fetchedInvoices.json());
-  };
-
-
-
-
 
   const handleDeleteInvoice = async (index) => {
     const updatedInvoices = invoices.filter((_, rowIndex) => rowIndex !== index);
@@ -54,9 +63,9 @@ export function Invoice() {
     try {
       const res = await delInvoice(deletedInvoiceId['id']);
       setRefresh(!refresh);
-  } catch (error) {
+    } catch (error) {
       console.log(error)
-  }
+    }
   };
 
   const formatCreatedAt = (createdAt) => {
@@ -66,12 +75,17 @@ export function Invoice() {
 
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
   const indexOfLastItem = indexOfFirstItem + itemsPerPage;
-  const filteredRows = invoices.filter(
-    ({ Customer }) =>
-      Customer['firstName'].toLowerCase().includes(searchQuery.toLowerCase()) || 
-      Customer['lastName'].toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const currentItems = filteredRows.slice(indexOfFirstItem, indexOfLastItem);
+
+  let currentItems = [];
+  let filteredRows = [];
+  if (invoices.length !== 0) {
+    filteredRows = invoices.filter(
+      ({ Customer }) =>
+        Customer['firstName'].toLowerCase().includes(searchQuery.toLowerCase()) ||
+        Customer['lastName'].toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    currentItems = filteredRows.slice(indexOfFirstItem, indexOfLastItem);
+  }
 
   const handleItemsPerPageChange = (event) => {
     const selectedItemsPerPage = parseInt(event.target.value, 10);
@@ -86,9 +100,16 @@ export function Invoice() {
   const openPopup = () => {
     setIsOpen(true);
   };
+
   const closePopup = () => {
     setIsOpen(false);
   };
+
+  const handlePrintInvoice = (id) => {
+    const selected = currentItems[id];
+    setPrintInvoice(selected);
+    console.log(selected);
+  }
 
   return (
     <>
@@ -156,7 +177,7 @@ export function Invoice() {
               </tr>
             </thead>
             <tbody>
-              {currentItems.map(({ Customer, paymentStatus, id,totalAmount,createdAt,Vehicle }, index) => {
+              {currentItems.map(({ id, Customer, paymentStatus, paymentMethod, totalAmount, createdAt, Vehicle }, index) => {
                 const isLast = index === currentItems.length - 1;
                 const classes = isLast
                   ? "p-4"
@@ -164,14 +185,16 @@ export function Invoice() {
                 return (
                   <tr key={id}>
                     <td className={classes}>
-                      <Typography
-                        variant="small"
-                        color="blue-gray"
-                        className="font-normal"
-                       
+                      <Link
+                        to="#"
+                        className="text-blue-gray font-normal hover:underline"
+                        onClick={() => {
+                          handleEditInvoice(index);
+                          openPopup();
+                        }}
                       >
                         {Customer['firstName']} {Customer['lastName']}
-                      </Typography>
+                      </Link>
                     </td>
 
                     <td className={classes}>
@@ -183,6 +206,17 @@ export function Invoice() {
                         {paymentStatus}
                       </Typography>
                     </td>
+
+                    <td className={classes}>
+                      <Typography
+                        variant="small"
+                        color="blue-gray"
+                        className="font-normal"
+                      >
+                        {paymentMethod}
+                      </Typography>
+                    </td>
+
                     <td className={classes}>
                       <Typography
                         variant="small"
@@ -207,47 +241,16 @@ export function Invoice() {
                         color="blue-gray"
                         className="font-normal "
                       >
-                        {Vehicle['make']}
+                        {`${Vehicle['make']} ${Vehicle['model']} ${Vehicle['year']}`}
                       </Typography>
                     </td>
+
                     <td className={classes}>
-                      <Typography
-                        variant="small"
-                        color="blue-gray"
-                        className="font-normal "
-                      >
-                        {Vehicle['model']}
-                      </Typography>
-                    </td>
-                    <td className={classes}>
-                      <Typography
-                        variant="small"
-                        color="blue-gray"
-                        className="font-normal "
-                      >
-                        {Vehicle['year']}
-                      </Typography>
-                    </td>
-                   
-                    <td className={classes}>
-                      <Tooltip content="Edit Invoice">
-                        <IconButton variant="text"  onClick={() => {
-                          handleEditInvoice(index);
-                          openPopup(); 
-                        }}>
-                          <PencilIcon className="h-6 w-6" />
-                        </IconButton>
-                      </Tooltip>
                       <Tooltip content="Delete Invoice">
-                        <IconButton variant="text"  onClick={() => {
+                        <IconButton variant="text" onClick={() => {
                           handleDeleteInvoice(index)
                         }}>
-                          <TrashIcon className="h-6 w-6" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip content="Print Invoice">
-                        <IconButton variant="text"  >
-                          <PrinterIcon className="h-6 w-6" />
+                          <TrashIcon className="h-6 w-6 text-red-500" />
                         </IconButton>
                       </Tooltip>
                     </td>
@@ -286,7 +289,7 @@ export function Invoice() {
         </CardFooter>
 
       </Card>
-     <MyPopUpForm refresh={refresh} setRefresh={setRefresh} open={isOpen} close={closePopup} selectedInvoice={selectedInvoice} />
+      <MyPopUpForm refresh={refresh} setRefresh={setRefresh} open={isOpen} close={closePopup} selectedInvoice={selectedInvoice} setSelectedInvoice={setSelectedInvoice} />
     </>
   );
 }   

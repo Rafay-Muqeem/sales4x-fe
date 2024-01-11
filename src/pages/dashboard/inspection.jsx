@@ -10,13 +10,7 @@ export function Inspection() {
     const [data, setData] = useState(inspectionReport);
 
     const handleStatusInputs = (index, fieldName, newValue) => {
-        // const newData = [...data];
-        // data[index]['good'] = false;
-        // data[index]['fair'] = false;
-        // data[index]['poor'] = false;
-        // data[index][fieldName] = newValue;
-
-        // setData(newData)
+    
         setData(prevData => {
             const newData = prevData.map((item, idx) => {
                 if (idx === index) {

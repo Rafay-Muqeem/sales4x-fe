@@ -19,19 +19,7 @@ import MyPopUpForm from "./form";
 import { fetchCustomers } from "@/services/fetchCustomers";
 import { delCustomer } from "@/services/delCustomer";
 
-const TABLE_HEAD = ["Customer Name", "Email", "Phone", "Address", "Taxable", "Invoices", "Actions"];
-
-// Service to fetch data from the provided API
-// const fetchFakeData = async () => {
-//   try {
-//     const response = await fetch('https://fakestoreapi.com/products');
-//     const data = await response.json();
-//     return data;
-//   } catch (error) {
-//     console.error("Error fetching data:", error);
-//     return [];
-//   }
-// };
+const TABLE_HEAD = ["Customer Name", "Email", "Phone", "Address", "Taxable", "Actions"];
 
 export function Customers() {
   const [selectAll, setSelectAll] = useState(false);
@@ -287,13 +275,6 @@ export function Customers() {
                     </td>
                     <td className={classes}>
                       <Checkbox color="green" checked={taxable ? 'checked' : ''} readOnly />
-                    </td>
-                    <td className={classes}>
-                      <Tooltip content="Invoice">
-                        <IconButton variant="text">
-                          <DocumentTextIcon className="h-6 w-6" />
-                        </IconButton>
-                      </Tooltip>
                     </td>
                     <td className={classes}>
                       <Tooltip content="Delete Customer">

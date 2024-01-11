@@ -17,7 +17,6 @@ const schema = Yup.object().shape({
 
 function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refresh, setRefresh }) {
 
-
     const [currentDate, setCurrentDate] = useState(getCurrentDateTimeForInput());
     const [update, setUpdate] = useState(false);
     const [error, setError] = useState(false);
@@ -56,6 +55,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
     }
 
     const correctTimeFormat = (date) => {
+        console.log(date);
         const parsedDate = new Date(date);
         const hours = String(parsedDate.getHours()).padStart(2, '0');
         const minutes = String(parsedDate.getMinutes()).padStart(2, '0');
@@ -194,7 +194,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
 
     return (
         <>
-            <Dialog ref={modalRef} size="sm" open={open} handler={handleOpen}>
+            <Dialog size="sm" open={open} handler={handleOpen}>
                 {open && (
                     <form onSubmit={handleSubmit} autoComplete="new" >
                         <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center">
