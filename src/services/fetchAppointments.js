@@ -1,6 +1,6 @@
 export async function fetchAppointments(){
     try {
-        const appointments = await fetch("http://localhost:5000/api/appointment/", {
+        const appointments = await fetch("https://solutions4x.com/api/appointment/", {
             method: "GET",
         })
        

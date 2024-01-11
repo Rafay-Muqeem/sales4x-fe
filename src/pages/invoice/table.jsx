@@ -1,6 +1,4 @@
-
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { DocumentTextIcon,PencilIcon } from "@heroicons/react/24/solid";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardHeader,
@@ -12,143 +10,106 @@ import {
   IconButton,
   Tooltip,
 } from "@material-tailwind/react";
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { DocumentTextIcon, PencilIcon, TrashIcon, PrinterIcon } from "@heroicons/react/24/solid";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import MyPopUpForm from "./form";
+import PrintView from "./printView";
+import { fetchInvoices } from "@/services/fetchInvoices";
+import { delInvoice } from "@/services/delInvoice";
+import { Link } from "react-router-dom";
+import { State } from "../../state/Context";
+import ReactToPrint from "react-to-print";
 
-const TABLE_HEAD = ["Customer", "View", "Status", "Total", "Balance","Due","Attached","Invoice Date","Assigned","Actions"];
-
-// Service to fetch data from the provided API
-const fetchFakeData = async () => {
-  try {
-    const response = await fetch('https://fakestoreapi.com/products');
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching data:", error);
-    return [];
-  }
-};
+const TABLE_HEAD = ["Customer", "Status", "Payment Method", "Total", "Invoice Date", "Vehicle", "Actions"];
 
 export function Invoice() {
-  const [selectAll, setSelectAll] = useState(false);
-  const [selectedRows, setSelectedRows] = useState([]);
+  const componentRef = useRef();
+
+  const { state } = State();
   const [searchQuery, setSearchQuery] = useState("");
-  const [finalItems, setFinalItems] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [refresh, setRefresh] = useState(false);
+  const [printInvoice, setPrintInvoice] = useState(null);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
 
-  // for edit of a customer 
-  const [selectedItem, setSelectedItem] = useState(null);
+  useEffect(() => {
+    getInvoices();
+  }, [refresh]);
 
-  // Modify handleRowSelect to update the selected item's data
-  const handleEditCustomer = (index) => {
+  const getInvoices = async () => {
+    const fetchedInvoices = await fetchInvoices();
+    const totalInvoices = await fetchedInvoices.json();
+    if (state.Settings.General.invoice === 'all') {
+      setInvoices(totalInvoices);
+    }
+    else if (state.Settings.General.invoice === 'current') {
+      setInvoices(totalInvoices.filter(invoice => invoice.current === true))
+    }
+  };
+
+  const handleEditInvoice = (index) => {
     // Assuming currentItems holds the filtered rows for display
     const selected = currentItems[index];
-    setSelectedItem(selected);
+    setSelectedInvoice(selected);
   };
 
-  // Fetch data from API when the component mounts
-  useEffect(() => {
-    const fetchData = async () => {
-      const data = await fetchFakeData();
-      setFinalItems(data);
-    };
-
-    fetchData();
-  }, []);
-
-// Function to handle header checkbox change
-const handleSelectAll = (event) => {
-  const checked = event.target.checked;
-  setSelectAll(checked);
-
-  if (checked) {
-    const allRowsIndexes = currentItems.map((_, index) => indexOfFirstItem + index);
-    setSelectedRows(allRowsIndexes);
-  } else {
-    setSelectedRows([]);
-  }
-};
-
-
-
-
-
-
-
-  // Function to handle individual row checkbox change
-  const handleRowSelect = (index) => {
-    const selectedIndex = selectedRows.indexOf(index);
-    let newSelectedRows = [];
-
-    if (selectedIndex === -1) {
-      newSelectedRows = newSelectedRows.concat(selectedRows, index);
-    } else if (selectedIndex === 0) {
-      newSelectedRows = newSelectedRows.concat(selectedRows.slice(1));
-    } else if (selectedIndex === selectedRows.length - 1) {
-      newSelectedRows = newSelectedRows.concat(selectedRows.slice(0, -1));
-    } else if (selectedIndex > 0) {
-      newSelectedRows = newSelectedRows.concat(
-        selectedRows.slice(0, selectedIndex),
-        selectedRows.slice(selectedIndex + 1)
-      );
+  const handleDeleteInvoice = async (index) => {
+    const updatedInvoices = invoices.filter((_, rowIndex) => rowIndex !== index);
+    const deletedInvoiceId = invoices.find((_, rowIndex) => rowIndex === index);
+    setInvoices(updatedInvoices);
+    try {
+      const res = await delInvoice(deletedInvoiceId['id']);
+      setRefresh(!refresh);
+    } catch (error) {
+      console.log(error)
     }
-
-    setSelectedRows(newSelectedRows);
   };
 
-  const filteredRows = finalItems.filter(
-    ({ title, category, description, id }) =>
-      title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      description.toLowerCase().includes(searchQuery.toLowerCase()) 
-      // phone.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const formatCreatedAt = (createdAt) => {
+    const date = new Date(createdAt);
+    return date.toLocaleString();
+  };
 
-  // Calculate the indexes of the items to display based on pagination
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredRows.slice(indexOfFirstItem, indexOfLastItem);
+  const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
+  const indexOfLastItem = indexOfFirstItem + itemsPerPage;
 
-  // Function to handle items per page change
+  let currentItems = [];
+  let filteredRows = [];
+  if (invoices.length !== 0) {
+    filteredRows = invoices.filter(
+      ({ Customer }) =>
+        Customer['firstName'].toLowerCase().includes(searchQuery.toLowerCase()) ||
+        Customer['lastName'].toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    currentItems = filteredRows.slice(indexOfFirstItem, indexOfLastItem);
+  }
+
   const handleItemsPerPageChange = (event) => {
     const selectedItemsPerPage = parseInt(event.target.value, 10);
     setItemsPerPage(selectedItemsPerPage);
     setCurrentPage(1);
   };
 
-// Function to handle deletion of selected items
-const handleDelete = () => {
-  // Calculate the indexes of the selected rows within the full data set
-  const selectedIndexes = selectedRows.map((index) => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return startIndex + index;
-  });
-
-  // Create a new array containing the rows that are not selected
-  const updatedItems = finalItems.filter((_, index) => !selectedIndexes.includes(index));
-  
-  // Update finalItems and clear selectedRows
-  setFinalItems(updatedItems);
-  setSelectedRows([]);
-  setSelectAll(false);
-};
-
-
-  // Function to handle pagination
   const paginate = (pageNumber) => {
     setCurrentPage(pageNumber);
   };
 
-  // Popup state
-  const [isOpen, setIsOpen] = useState(false);
   const openPopup = () => {
     setIsOpen(true);
   };
+
   const closePopup = () => {
     setIsOpen(false);
   };
+
+  const handlePrintInvoice = (id) => {
+    const selected = currentItems[id];
+    setPrintInvoice(selected);
+    console.log(selected);
+  }
 
   return (
     <>
@@ -174,9 +135,7 @@ const handleDelete = () => {
                 <Button className="w-full bg-blue-900 lg:w-auto" size="md" onClick={openPopup} >
                   New
                 </Button>
-                <Button className="w-full bg-red-900 lg:w-auto" size="md" onClick={handleDelete} disabled={selectedRows.length == 0} >
-                  Delete
-                </Button>
+
               </div>
             </div>
             <div className="flex items-center mt-4 lg:mt-0 lg:ml-auto">
@@ -200,16 +159,7 @@ const handleDelete = () => {
           <table className=" w-full min-w-max table-auto text-left">
             <thead>
               <tr>
-                <th className="border-y border-blue-gray-100 bg-blue-gray-50/50 p-4">
-                  <label className="inline-flex items-center">
-                    <input
-                      type="checkbox"
-                      className="form-checkbox text-blue-500 rounded border-gray-400 shadow-sm ml-1"
-                      checked={selectAll}
-                      onChange={handleSelectAll}
-                    />
-                  </label>
-                </th>
+
                 {TABLE_HEAD.map((head) => (
                   <th
                     key={head}
@@ -227,99 +177,80 @@ const handleDelete = () => {
               </tr>
             </thead>
             <tbody>
-              {currentItems.map(({ title, category, description, id }, index) => {
+              {currentItems.map(({ id, Customer, paymentStatus, paymentMethod, totalAmount, createdAt, Vehicle }, index) => {
                 const isLast = index === currentItems.length - 1;
                 const classes = isLast
                   ? "p-4"
                   : "p-4 border-b border-blue-gray-50";
-                const isChecked = selectedRows.includes(index);
                 return (
                   <tr key={id}>
-                    <td className={classes}>
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => handleRowSelect(index)}
-                      />
-                    </td>
                     <td className={classes}>
                       <Link
                         to="#"
                         className="text-blue-gray font-normal hover:underline"
                         onClick={() => {
-                          handleEditCustomer(index);
-                          openPopup(); 
+                          handleEditInvoice(index);
+                          openPopup();
                         }}
                       >
-                        {title}
+                        {Customer['firstName']} {Customer['lastName']}
                       </Link>
                     </td>
+
                     <td className={classes}>
                       <Typography
                         variant="small"
                         color="blue-gray"
                         className="font-normal"
                       >
-                        {category}
+                        {paymentStatus}
+                      </Typography>
+                    </td>
+
+                    <td className={classes}>
+                      <Typography
+                        variant="small"
+                        color="blue-gray"
+                        className="font-normal"
+                      >
+                        {paymentMethod}
+                      </Typography>
+                    </td>
+
+                    <td className={classes}>
+                      <Typography
+                        variant="small"
+                        color="blue-gray"
+                        className="font-normal"
+                      >
+                        {totalAmount}
                       </Typography>
                     </td>
                     <td className={classes}>
                       <Typography
                         variant="small"
                         color="blue-gray"
-                        className="font-normal opacity-70"
+                        className="font-normal "
                       >
-                        {category}
+                        {formatCreatedAt(createdAt)}
                       </Typography>
                     </td>
                     <td className={classes}>
                       <Typography
                         variant="small"
                         color="blue-gray"
-                        className="font-normal opacity-70"
+                        className="font-normal "
                       >
-                        {id}
+                        {`${Vehicle['make']} ${Vehicle['model']} ${Vehicle['year']}`}
                       </Typography>
                     </td>
+
                     <td className={classes}>
-                      <Tooltip content="Invoice">
-                        <IconButton variant="text">
-                          <DocumentTextIcon className="h-6 w-6" />
-                        </IconButton>
-                      </Tooltip>
-                    </td>
-                    <td className={classes}>
-                      <Tooltip content="Invoice">
-                        <IconButton variant="text">
-                          <DocumentTextIcon className="h-6 w-6" />
-                        </IconButton>
-                      </Tooltip>
-                    </td>
-                    <td className={classes}>
-                      <Tooltip content="Invoice">
-                        <IconButton variant="text">
-                          <DocumentTextIcon className="h-6 w-6" />
-                        </IconButton>
-                      </Tooltip>
-                    </td>
-                    <td className={classes}>
-                      <Tooltip content="Invoice">
-                        <IconButton variant="text">
-                          <DocumentTextIcon className="h-6 w-6" />
-                        </IconButton>
-                      </Tooltip>
-                    </td>
-                    <td className={classes}>
-                      <Tooltip content="Invoice">
-                        <IconButton variant="text">
-                          <DocumentTextIcon className="h-6 w-6" />
-                        </IconButton>
-                      </Tooltip>
-                    </td>
-                    <td className={classes}>
-                      <Tooltip content="Edit Invoice">
-                        <IconButton variant="text">
-                          <PencilIcon className="h-6 w-6" />
+                      <Tooltip content="Delete Invoice">
+                        <IconButton variant="text" onClick={() => {
+                          handleDeleteInvoice(index)
+                        }}>
+                          <TrashIcon className="h-6 w-6 text-red-500" />
                         </IconButton>
                       </Tooltip>
                     </td>
@@ -358,7 +289,7 @@ const handleDelete = () => {
         </CardFooter>
 
       </Card>
-      <MyPopUpForm open={isOpen} close={closePopup} selectedItem={selectedItem} />
+      <MyPopUpForm refresh={refresh} setRefresh={setRefresh} open={isOpen} close={closePopup} selectedInvoice={selectedInvoice} setSelectedInvoice={setSelectedInvoice} />
     </>
   );
-}
+}   

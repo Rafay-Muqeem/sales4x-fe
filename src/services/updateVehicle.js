@@ -1,14 +1,15 @@
-export async function addTax(data){
+export async function updateVehicle(id, data){
     try {
-        const tax = await fetch("https://solutions4x.com/api/tax/create", {
-            method: "POST",
+        console.log(data);
+        const vehicle = await fetch(`https://solutions4x.com/api/vehicle/update/${id}`, {
+            method: "PUT",
             headers: {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify(data)
         })
        
-        return tax;
+        return vehicle;
 
     } catch (error) {
         console.log(error);

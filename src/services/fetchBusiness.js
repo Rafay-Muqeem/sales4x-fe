@@ -1,6 +1,6 @@
 export async function fetchBusiness(){
     try {
-        const businesses = await fetch("http://localhost:5000/api/business/", {
+        const businesses = await fetch("https://solutions4x.com/api/business/", {
             method: "GET",
         })
        

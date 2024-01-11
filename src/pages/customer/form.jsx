@@ -74,7 +74,7 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
         phone: "",
         email: "",
         address: "",
-        taxable: false,
+        taxable: true,
         BusinessId: "",
       },
       errors: {
@@ -83,7 +83,7 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
         phone: "",
         email: "",
         address: "",
-        taxable: false,
+        taxable: true,
         BusinessId: "",
       },
     });
@@ -96,7 +96,7 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
       phone: "",
       email: "",
       address: "",
-      taxable: false,
+      taxable: true,
       BusinessId: "",
     },
     validationSchema: schema,

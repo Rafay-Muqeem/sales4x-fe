@@ -1,13 +1,13 @@
-export async function delUser(id){
+export async function delInvoice(id){
     try {
-        const user = await fetch(`https://solutions4x.com/api/user/delete/${id}`, {
+        const invoice = await fetch(`https://solutions4x.com/api/invoice/delete/${id}`, {
             method: "DELETE",
             headers: {
                 "Content-Type": "application/json"
             },
         })
        
-        return user.json();
+        return invoice.json();
 
     } catch (error) {
         console.log(error);
