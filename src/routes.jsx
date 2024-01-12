@@ -8,7 +8,7 @@ import {
   PencilSquareIcon,
   TruckIcon,
 } from "@heroicons/react/24/solid";
-import { Customers, Invoice, Product, Tables, Inspection, Appointments, Settings, Vehicles } from "@/pages/dashboard";
+import { Customers, Invoice, Quotation, Product, Tables, Inspection, Appointments, Settings, Vehicles } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
 
 const icon = {
@@ -30,6 +30,12 @@ export const routes = [
         name: "Invoices",
         path: "/invoice",
         element: <Invoice />,
+      },
+      {
+        icon: <DocumentTextIcon {...icon} />,
+        name: "Quotations",
+        path: "/quotation",
+        element: <Quotation />,
       },
       {
         icon: <CubeIcon {...icon} />,

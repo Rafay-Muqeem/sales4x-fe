@@ -102,8 +102,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
       })
       setSelectedProducts(selectedProd);
       setSelectedInvoice(null)
-
-      console.log(printInvoice);
     }
 
   }, [selectedInvoice]);
@@ -124,7 +122,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
       "products": selectedProductIds,
     };
 
-    console.log(selectedProductIds);
     if (edit) {
       const res = await updateInvoice(invoiceId, data)
     }
@@ -297,10 +294,10 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
   };
 
   useEffect(() => {
-    const foundtax = taxes.find(
-      (tax) => tax.default === true
-    );
-    setSelectedTax(foundtax);
+      const foundtax = taxes.find(
+        (tax) => tax.default === true
+      );
+      setSelectedTax(foundtax);
   }, [taxes]);
 
   const clearForm = (formikProps) => {
@@ -336,7 +333,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
     onSubmit,
   });
 
-
   const {
     values,
     errors,
@@ -356,7 +352,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                 <div className="flex items-center justify-between sticky bg-gradient-to-br from-gray-800 to-gray-700">
                   <div></div>
                   <div className="text-white text-center text-lg">
-                    Invoice
+                    {edit ? "EDIT INVOICE" : "NEW INVOICE"}
                   </div>
                   <button
                     className=" bg-transparent hover:bg-gray-800 text-white font-bold py-2 px-4 rounded"
@@ -591,7 +587,8 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                                 <input
                                   type="checkbox"
                                   checked={item.taxable}
-                                  onChange={(e) => handleTaxableChange(index, e.target.checked)}
+                                  readOnly
+                                  // onChange={(e) => handleTaxableChange(index, e.target.checked)}
                                 />
                               </td>
                               <td className="p-4 border-b border-blue-gray-50">

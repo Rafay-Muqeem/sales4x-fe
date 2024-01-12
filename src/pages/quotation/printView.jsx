@@ -5,7 +5,7 @@ import {
     CardBody,
 } from "@material-tailwind/react";
 
-const INVOICE_TABLE_HEAD = ["Customer", "Status", "Payment Method", "Total", "Invoice Date", "Vehicle"];
+const INVOICE_TABLE_HEAD = ["Customer", "Total", "Quotation Date", "Vehicle"];
 const PRODUCT_TABLE_HEAD = ["Product", "Quantity", "Price", "Tax", "Amount"]
 
 export default function printView({ printInvoice, componentRef, selectedTax, taxAmount, totalAmountWithTax }) {
@@ -23,7 +23,7 @@ export default function printView({ printInvoice, componentRef, selectedTax, tax
     const calculateTotalAmount = (products) => {
         let total = 0;
         products.forEach((item) => {
-            total += calculateAmount(item.price, item.invoice_product.quantity);
+            total += calculateAmount(item.price, item.quotation_product.quantity);
         });
         return total;
     };
@@ -34,12 +34,11 @@ export default function printView({ printInvoice, componentRef, selectedTax, tax
     }, [printInvoice])
 
     if (printInvoice.length !== 0) {
-
         return (
             <div ref={componentRef} className="hidden print:block">
                 <div className="flex items-center justify-between p-4">
                     <h1 className="text-2xl font-bold">Sales4x</h1>
-                    <h2 className="text-2xl">Invoice Receipt</h2>
+                    <h2 className="text-2xl">Quotation Receipt</h2>
                     <p className="text-sm">{currentDate}</p>
                 </div>
                 <Card className="h-full w-full ">
@@ -74,27 +73,7 @@ export default function printView({ printInvoice, componentRef, selectedTax, tax
                                             >
                                                 {printInvoice.Customer.firstName} {printInvoice.Customer.lastName}
                                             </Typography>
-                                        </td>
-
-                                        <td>
-                                            <Typography
-                                                variant="small"
-                                                color="blue-gray"
-                                                className="font-normal p-2"
-                                            >
-                                                {printInvoice.paymentStatus}
-                                            </Typography>
-                                        </td>
-
-                                        <td>
-                                            <Typography
-                                                variant="small"
-                                                color="blue-gray"
-                                                className="font-normal p-2"
-                                            >
-                                                {printInvoice.paymentMethod}
-                                            </Typography>
-                                        </td>
+                                        </td>                                        
 
                                         <td>
                                             <Typography
@@ -171,7 +150,7 @@ export default function printView({ printInvoice, componentRef, selectedTax, tax
                                                 color="blue-gray"
                                                 className="font-normal leading-none opacity-70"
                                             >
-                                                {item.invoice_product.quantity}
+                                                {item.quotation_product.quantity}
                                             </Typography>
                                         </td>
                                         <td className="p-4 border-b border-blue-gray-50">
@@ -196,7 +175,7 @@ export default function printView({ printInvoice, componentRef, selectedTax, tax
                                                 color="blue-gray"
                                                 className="font-normal opacity-70"
                                             >
-                                                {calculateAmount(item.price, item.invoice_product.quantity)}
+                                                {calculateAmount(item.price, item.quotation_product.quantity)}
                                             </Typography>
                                         </td>
                                     </tr>

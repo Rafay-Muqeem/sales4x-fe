@@ -122,7 +122,7 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
               <div className="flex items-center justify-between sticky bg-gradient-to-br from-gray-800 to-gray-700">
                 <div></div>
                 <div className="text-white text-center text-lg">
-                  {edit ? "EDIT CUSTOMER" : "New Customer"}
+                  {edit ? "EDIT CUSTOMER" : "NEW CUSTOMER"}
                 </div>
                 <button
                   className=" bg-transparent hover:bg-gray-800 text-white font-bold py-2 px-4 rounded"
