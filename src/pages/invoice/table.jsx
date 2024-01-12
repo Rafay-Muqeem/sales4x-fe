@@ -10,20 +10,17 @@ import {
   IconButton,
   Tooltip,
 } from "@material-tailwind/react";
-import { DocumentTextIcon, PencilIcon, TrashIcon, PrinterIcon } from "@heroicons/react/24/solid";
+import { DocumentTextIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import MyPopUpForm from "./form";
-import PrintView from "./printView";
 import { fetchInvoices } from "@/services/fetchInvoices";
 import { delInvoice } from "@/services/delInvoice";
 import { Link } from "react-router-dom";
 import { State } from "../../state/Context";
-import ReactToPrint from "react-to-print";
 
 const TABLE_HEAD = ["Customer", "Status", "Payment Method", "Total", "Invoice Date", "Vehicle", "Actions"];
 
 export function Invoice() {
-  const componentRef = useRef();
 
   const { state } = State();
   const [searchQuery, setSearchQuery] = useState("");
@@ -31,7 +28,6 @@ export function Invoice() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [refresh, setRefresh] = useState(false);
-  const [printInvoice, setPrintInvoice] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -104,12 +100,6 @@ export function Invoice() {
   const closePopup = () => {
     setIsOpen(false);
   };
-
-  const handlePrintInvoice = (id) => {
-    const selected = currentItems[id];
-    setPrintInvoice(selected);
-    console.log(selected);
-  }
 
   return (
     <>
