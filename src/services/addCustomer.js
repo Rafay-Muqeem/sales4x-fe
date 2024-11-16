@@ -1,9 +1,10 @@
-export async function addCustomer(data){
+export async function addCustomer(data, token){
     try {
-        const customer = await fetch("https://solutions4x.com/api/customer/create", {
+        const customer = await fetch("http://localhost:5000/api/customer/create", {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "auth-token": token
             },
             body: JSON.stringify(data)
         })

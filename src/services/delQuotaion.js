@@ -1,13 +1,14 @@
-export async function delQuotation(id){
+export async function delQuotation(id, token){
     try {
-        const quotation = await fetch(`https://solutions4x.com/api/quotation/delete/${id}`, {
+        const quotation = await fetch(`http://localhost:5000/api/quotation/delete/${id}`, {
             method: "DELETE",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "auth-token": token
             },
         })
        
-        return quotation.json();
+        return quotation;
 
     } catch (error) {
         console.log(error);

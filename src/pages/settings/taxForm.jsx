@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Button,
     Dialog,
@@ -12,35 +12,23 @@ import {
 } from "@material-tailwind/react";
 import { addTax } from "@/services/addTax";
 import { updateTax } from "@/services/updateTax";
+import { State } from "@/state/Context";
 
 function TaxForm({ taxData, setTaxData, open, handleOpen, refresh, setRefresh }) {
 
-    const modalRef = useRef(null);
-
+    const {state} = State();
     const [id, setId] = useState('');
     const [name, setName] = useState('');
     const [rate, setRate] = useState('');
     const [type, setType] = useState('');
     const [Default, setDefault] = useState(false);
-    const [update, setUpdate] = useState(false);
+    const [BusinessId, setBusinessId] = useState('');
+    const [edit, setEdit] = useState(false);
 
-    const handleOutsideClick = (e) => {
-        if (modalRef.current && !modalRef.current.contains(e.target)) {
-            resetFields();
-        }
-    };
-
-    useEffect(() => {
-        document.addEventListener('mousedown', handleOutsideClick);
-
-        return () => {
-            document.removeEventListener('mousedown', handleOutsideClick);
-        };
-    }, []);
 
     useEffect(() => {
         if (taxData !== '') {
-            setUpdate(true);
+            setEdit(true);
             setId(taxData.id);
             setName(taxData.name);
             setRate(taxData.rate);
@@ -55,11 +43,13 @@ function TaxForm({ taxData, setTaxData, open, handleOpen, refresh, setRefresh })
             name: name,
             rate: rate,
             type: type,
-            default: Default
+            default: Default,
+            BusinessId: state.business.id
         }
 
+        console.log(state.business.id);
         try {
-            const res = await addTax(data);
+            const res = await addTax(data, state.userToken);
             const tax = await res.json();
             resetFields();
             setRefresh(!refresh);
@@ -79,11 +69,11 @@ function TaxForm({ taxData, setTaxData, open, handleOpen, refresh, setRefresh })
         }
 
         try {
-            const res = await updateTax(id, data);
+            const res = await updateTax(id, data, state.userToken);
             const tax = await res.json();
             resetFields();
             setTaxData('');
-            setUpdate(false);
+            setEdit(false);
             setRefresh(!refresh)
             handleOpen();
         } catch (error) {
@@ -97,7 +87,7 @@ function TaxForm({ taxData, setTaxData, open, handleOpen, refresh, setRefresh })
         setType('');
         setDefault(false);
         setTaxData('');
-        setUpdate(false);
+        setEdit(false);
     }
 
     const options = [
@@ -107,8 +97,8 @@ function TaxForm({ taxData, setTaxData, open, handleOpen, refresh, setRefresh })
 
     return (
         <>
-            <Dialog ref={modalRef} size="sm" open={open} handler={handleOpen}>
-                <DialogHeader>Tax Rate</DialogHeader>
+            <Dialog dismiss={{enabled:false}} size="sm" open={open} handler={handleOpen}>
+                <DialogHeader>{!edit ? "ADD TAX" : "EDIT TAX"}</DialogHeader>
                 <DialogBody>
                     <form className="flex flex-col space-y-4 ">
                         <Input
@@ -151,8 +141,8 @@ function TaxForm({ taxData, setTaxData, open, handleOpen, refresh, setRefresh })
                     >
                         <span>Cancel</span>
                     </Button>
-                    <Button variant="gradient" color="green" onClick={update ? handleUpdate : handleAdd} >
-                        <span>{update ? 'Update' : 'Add'}</span>
+                    <Button variant="gradient" color="green" onClick={edit ? handleUpdate : handleAdd} >
+                        <span>{edit ? 'Update' : 'Add'}</span>
                     </Button>
                 </DialogFooter>
             </Dialog>

@@ -1,8 +1,10 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import {
   Navbar,
   Button,
   IconButton,
+  Breadcrumbs,
+  Typography,
 } from "@material-tailwind/react";
 import {
   UserCircleIcon,
@@ -12,15 +14,18 @@ import {
   useMaterialTailwindController,
   setOpenSidenav,
 } from "@/context";
+import { State } from "@/state/Context";
 
 export function DashboardNavbar() {
+  const { dispatch } = State();
   const navigate = useNavigate()
-  const [controller, dispatch] = useMaterialTailwindController();
+  const [controller, dispatcher] = useMaterialTailwindController();
   const { fixedNavbar, openSidenav } = controller;
   const { pathname } = useLocation();
   const [layout, page] = pathname.split("/").filter((el) => el !== "");
 
   const logout = () => {
+    dispatch({ type: 'RESET' })
     localStorage.removeItem('Token');
     localStorage.removeItem('sessionExp');
     navigate('/auth/sign-in')
@@ -34,14 +39,14 @@ export function DashboardNavbar() {
       blurred={fixedNavbar}
     >
       <div className="flex flex-row">
-          <IconButton
-            variant="text"
-            color="blue-gray"
-            className="grid xl:hidden"
-            onClick={() => setOpenSidenav(dispatch, !openSidenav)}
-            >
-            <Bars3Icon strokeWidth={3} className="h-6 w-6 text-blue-gray-500" />
-          </IconButton>
+        <IconButton
+          variant="text"
+          color="blue-gray"
+          className="grid xl:hidden"
+          onClick={() => setOpenSidenav(dispatcher, !openSidenav)}
+        >
+          <Bars3Icon strokeWidth={3} className="h-6 w-6 text-blue-gray-500" />
+        </IconButton>
 
         <div className="flex w-full flex-row justify-end">
           <Button
@@ -58,7 +63,7 @@ export function DashboardNavbar() {
             color="blue-gray"
             className="grid xl:hidden"
             onClick={logout}
-            >
+          >
             <UserCircleIcon className="h-7 w-7 text-blue-gray-500" />
           </IconButton>
         </div>

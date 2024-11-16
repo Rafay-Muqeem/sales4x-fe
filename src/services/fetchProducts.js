@@ -1,7 +1,10 @@
-export async function fetchProducts(){
+export async function fetchProducts(token){
     try {
-        const products = await fetch("https://solutions4x.com/api/product/", {
+        const products = await fetch("http://localhost:5000/api/product/", {
             method: "GET",
+            headers: {
+                "auth-token": token
+            }
         })
        
         return products;

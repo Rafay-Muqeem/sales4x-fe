@@ -1,6 +1,6 @@
 
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { DocumentTextIcon, UserGroupIcon, TrashIcon } from "@heroicons/react/24/solid";
+import { UserGroupIcon, TrashIcon } from "@heroicons/react/24/solid";
 import {
   Card,
   CardHeader,
@@ -11,17 +11,21 @@ import {
   CardFooter,
   IconButton,
   Tooltip,
-  Checkbox
+  Checkbox,
+  Spinner,
 } from "@material-tailwind/react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import MyPopUpForm from "./form";
 import { fetchCustomers } from "@/services/fetchCustomers";
 import { delCustomer } from "@/services/delCustomer";
+import { toast } from "react-toastify";
+import { State } from "@/state/Context";
 
 const TABLE_HEAD = ["Customer Name", "Email", "Phone", "Address", "Taxable", "Actions"];
 
 export function Customers() {
+  const { state } = State();
   const [selectAll, setSelectAll] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,6 +33,7 @@ export function Customers() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [refresh, setRefresh] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // for edit of a customer 
   const [selectedItem, setSelectedItem] = useState(null);
@@ -36,8 +41,26 @@ export function Customers() {
   // Modify handleRowSelect to update the selected item's data
   const handleEditCustomer = (index) => {
     // Assuming currentItems holds the filtered rows for display
-    const selected = currentItems[index];
-    setSelectedItem(selected);
+    if (state.userInfo.Permission.some(obj => obj.name === "CAN_EDIT_CUSTOMER" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+      const selected = currentItems[index];
+      setSelectedItem(selected);
+      openPopup();
+    }
+    else {
+      toast.error("You are not allowed to edit a customer");
+    }
+  };
+
+  const showToastMessage = (type, message) => {
+    if (type === 'success') {
+      toast.success(message)
+    }
+    else if (type === 'info') {
+      toast.info(message)
+    }
+    else {
+      toast.error(message)
+    }
   };
 
   // Fetch data from API when the component mounts
@@ -46,8 +69,15 @@ export function Customers() {
   }, [refresh]);
 
   const getCustomers = async () => {
-    const customers = await fetchCustomers();
-    setFinalItems(await customers.json());
+    try {
+      const res = await fetchCustomers(state.userToken);
+      const customers = await res.json();      
+      setFinalItems(customers);
+      setLoading(false);
+    } catch (error) {
+      console.log(error.message);
+      showToastMessage('error', 'Something went wrong')
+    }
   }
 
   // Function to handle header checkbox change
@@ -85,10 +115,10 @@ export function Customers() {
   };
 
   const filteredRows = finalItems.filter(
-    ({ firstName, lastName, email }) =>
+    ({ firstName, lastName, phone }) =>
       firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.toLowerCase().includes(searchQuery.toLowerCase())
+      phone.includes(searchQuery.toLowerCase())
   );
 
   // Calculate the indexes of the items to display based on pagination
@@ -119,14 +149,29 @@ export function Customers() {
     // setSelectedRows([]);
     // setSelectAll(false);
 
-    try {
-      const res = await delCustomer(id);
-      setRefresh(!refresh);
-  } catch (error) {
-      console.log(error)
-  }
+    if (state.userInfo.Permission.some(obj => obj.name === "CAN_DELETE_CUSTOMER" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+      try {
+        const res = await delCustomer(id, state.userToken);
+        const customer = await res.json();
+        if (res.status === 200) {
+          showToastMessage('success', customer.message)
+        }
+        else if (res.status === 404) {
+          showToastMessage('info', customer.message)
+        }
+        else if (res.status === 500) {
+          showToastMessage('error', "You must delete its foreign key relations first");
+        }
+        setRefresh(!refresh);
+      } catch (error) {
+        console.log(error)
+        showToastMessage('error', "Something went wrong");
+      }
+    }
+    else {
+      toast.error("You are not allowed to delete a customer");
+    }
   };
-
 
   // Function to handle pagination
   const paginate = (pageNumber) => {
@@ -135,13 +180,23 @@ export function Customers() {
 
   // Popup state
   const [isOpen, setIsOpen] = useState(false);
+
   const openPopup = () => {
-    setIsOpen(true);
+    if (state.userInfo.Permission.some(obj => obj.name === "IS_CASHIER" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+      setIsOpen(true);
+    }
+    else {
+      toast.error("You are not allowed to add a customer")
+    }
   };
+
   const closePopup = () => {
     setIsOpen(false);
   };
 
+  if (loading) {
+    return <Spinner className="mx-auto mt-[30vh] h-10 w-10 text-gray-900/50" />
+  }
   return (
     <>
       <Card className="h-full w-full ">
@@ -216,10 +271,24 @@ export function Customers() {
                     </Typography>
                   </th>
                 ))}
+                {state.userInfo.role === 'super_admin' && (
+                  <th
+                    key={'BUSINESS'}
+                    className="border-y border-blue-gray-100 bg-blue-gray-50/50 p-4"
+                  >
+                    <Typography
+                      variant="small"
+                      color="blue-gray"
+                      className="font-normal leading-none opacity-70"
+                    >
+                      BUSINESS
+                    </Typography>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
-              {currentItems.map(({ firstName, lastName, email, phone, address, taxable, id }, index) => {
+              {currentItems.map(({ firstName, lastName, email, phone, address, taxable, id, Business }, index) => {
                 const isLast = index === currentItems.length - 1;
                 const classes = isLast
                   ? "p-4"
@@ -240,7 +309,6 @@ export function Customers() {
                         className="text-blue-gray font-normal hover:underline"
                         onClick={() => {
                           handleEditCustomer(index);
-                          openPopup();
                         }}
                       >
                         {firstName} {lastName}
@@ -283,6 +351,17 @@ export function Customers() {
                         </IconButton>
                       </Tooltip>
                     </td>
+                    {state.userInfo.role === 'super_admin' && (
+                      <td className={classes}>
+                        <Typography
+                          variant="small"
+                          color="blue-gray"
+                          className="font-normal opacity-70"
+                        >
+                          {Business.name}
+                        </Typography>
+                      </td>
+                    )}
                   </tr>
                 );
               },

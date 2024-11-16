@@ -1,13 +1,14 @@
-export async function delTax(id){
+export async function delTax(id, token){
     try {
-        const tax = await fetch(`https://solutions4x.com/api/tax/delete/${id}`, {
+        const tax = await fetch(`http://localhost:5000/api/tax/delete/${id}`, {
             method: "DELETE",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "auth-token": token
             },
         })
        
-        return tax.json();
+        return tax;
 
     } catch (error) {
         console.log(error);

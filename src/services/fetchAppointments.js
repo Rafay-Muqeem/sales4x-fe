@@ -1,7 +1,10 @@
-export async function fetchAppointments(){
+export async function fetchAppointments(token){
     try {
-        const appointments = await fetch("https://solutions4x.com/api/appointment/", {
+        const appointments = await fetch("http://localhost:5000/api/appointment/", {
             method: "GET",
+            headers: {
+                "auth-token": token
+            }
         })
        
         return appointments;

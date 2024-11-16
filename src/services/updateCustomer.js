@@ -1,9 +1,10 @@
-export async function updateCustomer(id, data){
+export async function updateCustomer(id, data, token){
     try {
-        const customer = await fetch(`https://solutions4x.com/api/customer/update/${id}`, {
+        const customer = await fetch(`http://localhost:5000/api/customer/update/${id}`, {
             method: "PUT",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "auth-token": token
             },
             body: JSON.stringify(data)
         })

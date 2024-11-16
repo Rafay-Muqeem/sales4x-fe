@@ -14,7 +14,6 @@ function Profile() {
     ];
 
     const handleSaveClick = async () => {
-        console.log(invoice);
         dispatch({ type: 'SET_INVOICE', payload: invoice });
     }
 
@@ -47,31 +46,8 @@ function Profile() {
             </div>
 
             <div className="border-b-2 pb-4 mt-10 mr-10">
-                <h2 className="text-lg font-semibold mb-4 ">Change Login:</h2>
-                <form className="flex flex-col space-y-4 w-48">
-                    <Input
-                        label="Current Password"
-                        type="password"
-                        value={currentPass}
-                        onChange={(e) => setCurrentPass(e.target.value)}
-                    />
-
-                    <Input
-                        label="New Password"
-                        type="password"
-                        value={newPass}
-                        onChange={(e) => setNewPass(e.target.value)}
-                    />
-
-                    <Input
-                        label="Re-enter Password"
-                        type="password"
-                        value={reEnterPass}
-                        onChange={(e) => setReEnterPass(e.target.value)}
-                    />
-
-                    <Button >Save</Button>
-                </form>
+                
+                
             </div>
         </div>
     );

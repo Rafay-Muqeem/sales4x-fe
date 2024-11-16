@@ -1,10 +1,11 @@
-export async function updateProduct(id, data){
+export async function updateProduct(id, data, token){
     try {
         console.log(data);
-        const product = await fetch(`https://solutions4x.com/api/product/update/${id}`, {
+        const product = await fetch(`http://localhost:5000/api/product/update/${id}`, {
             method: "PUT",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "auth-token": token
             },
             body: JSON.stringify(data)
         })

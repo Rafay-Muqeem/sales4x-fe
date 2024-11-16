@@ -1,13 +1,14 @@
-export async function delProduct(id){
+export async function delProduct(id, token){
     try {
-        const product = await fetch(`https://solutions4x.com/api/product/delete/${id}`, {
+        const product = await fetch(`http://localhost:5000/api/product/delete/${id}`, {
             method: "DELETE",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "auth-token": token
             },
         })
        
-        return product.json();
+        return product;
 
     } catch (error) {
         console.log(error);

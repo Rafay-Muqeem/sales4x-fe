@@ -1,6 +1,6 @@
-export async function addUser(data, token){
+export async function addAddress(data, token){
     try {
-        const user = await fetch("http://localhost:5000/api/user/signup", {
+        const res = await fetch("http://localhost:5000/api/address/create", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -9,7 +9,7 @@ export async function addUser(data, token){
             body: JSON.stringify(data)
         })
        
-        return user;
+        return res;
 
     } catch (error) {
         console.log(error);

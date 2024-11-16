@@ -1,7 +1,10 @@
-export async function fetchUsers(){
+export async function fetchUsers(token){
     try {
-        const users = await fetch("https://solutions4x.com/api/user/", {
+        const users = await fetch("http://localhost:5000/api/user/", {
             method: "GET",
+            headers: {
+                "auth-token": token
+            }
         })
        
         return users;

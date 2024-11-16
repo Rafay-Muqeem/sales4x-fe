@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Button,
     Dialog,
@@ -6,49 +6,54 @@ import {
     DialogBody,
     DialogFooter,
     Input,
-    Select,
-    Option,
-    Chip,
+    Typography,
 } from "@material-tailwind/react";
 import { addUser } from "@/services/addUser";
-import { XMarkIcon } from "@heroicons/react/24/outline";
 import { updateUser } from "@/services/updateUser";
+import { State } from "@/state/Context";
+import { toast } from "react-toastify";
+import { fetchBusiness } from "@/services/fetchBusiness";
 
-function UserForm({ businesses, permissions, userData, setUserData, open, handleOpen, refresh, setRefresh }) {
-
-    const modalRef = useRef(null);
-
+function UserForm({ permissions, userData, setUserData, open, handleOpen, refresh, setRefresh }) {
+    
+    const { state } = State();
     const [formData, setFormData] = useState({
-        first_name: '',
-        last_name: '',
-        email: '',
-        password: '',
-        role: '',
-        dob: '',
-        BusinessId: '',
+        first_name: null,
+        last_name: null,
+        email: null,
+        password: null,
+        role: null,
+        dob: null,
+        BusinessId: null,
     });
+
     const [selectPerms, setSelectPerms] = useState([]);
-    const [id, setId] = useState('');
-    const [update, setUpdate] = useState(false);
+    const [id, setId] = useState(null);
+    const [edit, setEdit] = useState(false);
+    const [business, setBusiness] = useState(null);
+    const [businesses, setBusinesses] = useState(null);
+    const [error, setError] = useState(false);
 
 
-    const handleOutsideClick = (e) => {
-        if (modalRef.current && !modalRef.current.contains(e.target)) {
-            resetFields();
+    useEffect(() => {
+        getBusinesses();
+    }, [])
+
+    const getBusinesses = async () => {
+        try {
+            const res = await fetchBusiness(state.userToken);
+            const businesses = await res.json();
+            console.log(businesses);
+
+            setBusinesses(businesses)
+        } catch (error) {
+            toast.error("Something went wrong")
         }
-    };
+    }
 
     useEffect(() => {
-        document.addEventListener('mousedown', handleOutsideClick);
-
-        return () => {
-            document.removeEventListener('mousedown', handleOutsideClick);
-        };
-    }, []);
-
-    useEffect(() => {
-        if (userData !== '') {
-            setUpdate(true);
+        if (userData !== null) {
+            setEdit(true);
             setFormData({
                 first_name: userData.first_name,
                 last_name: userData.last_name,
@@ -58,164 +63,237 @@ function UserForm({ businesses, permissions, userData, setUserData, open, handle
                 dob: userData.dob,
                 BusinessId: userData.BusinessId,
             })
-            setSelectPerms(userData.Permission);
+            setBusiness(userData.BusinessId);
+            setSelectPerms(userData.Permission.map((perm) => (perm.id)));
             setId(userData.id)
         }
-        setUserData('');
+        setUserData(null);
     })
 
-    const handleAdd = async () => {
+    const handleSubmit = async () => {
+        let updatedData = {};
+        if (state.userInfo.role === 'super-admin') {
+            updatedData = { ...formData, BusinessId: business }
+        }
+        else {
+            updatedData = { ...formData, BusinessId: state.business.id }
+        }
         const data = {
-            user: formData,
-            permissions: selectPerms.map((perm) => (perm.id)),
+            user: updatedData,
+            permissions: selectPerms,
         }
 
         try {
-            const res = await addUser(data);
-            const user = await res.json();
-            console.log(user)
-            resetFields();
-            setRefresh(!refresh);
-            handleOpen();
+            if (!edit) {
+                if (!(Object.values((({ ['dob']: _, ...rest }) => rest)(updatedData)).some(value => !value))) {
+                    const res = await addUser(data, state.userToken);
+                    const user = await res.json();
+
+                    if (res.status === 400) {
+                        toast.info(user.message);
+                    }
+                    else if (res.status === 409) {
+                        toast.info(user.message)
+                    }
+
+                    setError(false);
+                    resetFields();
+                    setEdit(false);
+                    setRefresh(!refresh);
+                    handleOpen();
+                }
+                else {
+                    setError(true);
+                }
+            }
+            else {
+                if (!(Object.values((({ ['dob']: _, ['password']: __, ...rest }) => rest)(updatedData)).some(value => !value))) {
+                    const res = await updateUser(id, data, state.userToken);
+                    const user = await res.json();
+
+                    if (res.status === 400) {
+                        toast.info(user.message);
+                    }
+                    else if (res.status === 409) {
+                        toast.info(user.message)
+                    }
+
+                    setError(false);
+                    resetFields();
+                    setEdit(false);
+                    setRefresh(!refresh);
+                    handleOpen();
+                }
+                else {
+                    setError(true);
+                }
+            }
+
         } catch (error) {
             console.log(error)
+            toast.error("Something went wrong")
         }
     };
 
-    const handleUpdate = async () => {
-        const data = {
-            user: formData,
-            permissions: selectPerms.map((perm) => (perm.id)),
-        }
+    const handlePermission = (value, event) => {
+        const isChecked = event.target.checked;
 
-        try {
-            const res = await updateUser(id, data);
-            const user = await res.json();
-
-            resetFields();
-            setUserData('');
-            setUpdate(false);
-            setRefresh(!refresh)
-            handleOpen();
-        } catch (error) {
-            console.log(error)
-        }
-    };
-
-    const handlePermission = (value) => {
-        if (!selectPerms.some(perm => perm.id === value.id)) {
+        if (isChecked) {
             setSelectPerms([...selectPerms, value]);
+        } else {
+            setSelectPerms(selectPerms.filter(id => id !== value));
         }
 
     }
 
     const resetFields = () => {
         setFormData({
-            first_name: '',
-            last_name: '',
-            email: '',
-            password: '',
-            role: '',
-            dob: '',
-            BusinessId: '',
+            first_name: null,
+            last_name: null,
+            email: null,
+            password: null,
+            role: null,
+            dob: null,
+            BusinessId: null,
         })
+        setBusiness(null)
         setSelectPerms([])
-        setUpdate(false);
+        setEdit(false);
+        setError(false)
     }
 
-    const options = [
+    const userRoles = [
         { value: 'Admin', label: 'Admin' },
+        { value: 'Manager', label: 'Manager' },
+        { value: 'Cashier', label: 'Cashier' },
         { value: 'Salesman', label: 'Salesman' },
     ];
 
     return (
         <>
-            <Dialog ref={modalRef} size="sm" open={open} handler={handleOpen}>
-                <DialogHeader>User</DialogHeader>
+            <Dialog dismiss={{ enabled: false }} size="sm" open={open} handler={handleOpen}>
+                <DialogHeader>{!edit ? "ADD USER" : "EDIT USER"}</DialogHeader>
+                <Typography variant="h6" color="red" className="ml-4 font-normal">{error && ("Please fill all required fields")}</Typography>
                 <DialogBody>
-                    <form id="form" className="flex flex-col space-y-4 mb-4 pb-4 border-b-2">
-                        <Input
-                            label="First Name"
-                            type="text"
-                            value={formData.first_name}
-                            onChange={(e) => setFormData({ ...formData, ['first_name']: e.target.value })}
-                            size="md"
-                        />
-                        <Input
-                            label="Last Name"
-                            type="text"
-                            value={formData.last_name}
-                            onChange={(e) => setFormData({ ...formData, ['last_name']: e.target.value })}
-                            size="md"
-                        />
-                        <Input
-                            label="name@mail.com"
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, ['email']: e.target.value })}
-                            size="md"
-                        />
-                        <Input
-                            label="*******"
-                            type="password"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, ['password']: e.target.value })}
-                            size="md"
-                        />
-                        <Select
-                            label="Select Role"
-                            animate={{
-                                mount: { y: 0 },
-                                unmount: { y: 25 },
-                            }}
-                            value={formData.role}
-                            onChange={(value) => setFormData({ ...formData, ['role']: value })}
-                            size="md"
-                        >
-                            {options.map((option) => (
-                                <Option key={option.value} value={option.value}>{option.label}</Option>
-                            ))}
-                        </Select>
-                        <Input
-                            label="DOB"
-                            type="date"
-                            value={formData.dob}
-                            onChange={(e) => setFormData({ ...formData, ['dob']: e.target.value })}
-                        />
-                        <Select
-                            label="Select Business"
-                            animate={{
-                                mount: { y: 0 },
-                                unmount: { y: 25 },
-                            }}
-                            value={formData.BusinessId}
-                            onChange={(value) => setFormData({ ...formData, ['BusinessId']: value })}
-                            size="md"
-                        >
-                            {businesses ?
-                                businesses.map((business) => (
-                                    <Option key={business.id} value={business.id}>{business.name}, {business.location}</Option>
-                                )) : []}
-                        </Select>
+                    <form id="form" className="flex flex-col space-y-4 mb-2 border-b-2 pb-4" onSubmit={handleSubmit} autoComplete="new" >
+                        <div className="flex items-center justify-start space-x-4">
+                            <Input
+                                className="w-48"
+                                id="first_name"
+                                label="First Name"
+                                type="text"
+                                value={formData.first_name}
+                                onChange={(e) => setFormData({ ...formData, ['first_name']: e.target.value })}
+                                size="md"
+                                required
+                            />
+                            <Input
+                                className="w-48"
+                                id="last_name"
+                                label="Last Name"
+                                type="text"
+                                value={formData.last_name}
+                                onChange={(e) => setFormData({ ...formData, ['last_name']: e.target.value })}
+                                size="md"
+                                required
+                            />
+
+                        </div>
+                        <div className="flex items-center justify-start space-x-4">
+                            <Input
+                                className="w-48"
+                                id="email"
+                                label="name@mail.com"
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, ['email']: e.target.value })}
+                                size="md"
+                                required
+                            />
+
+                            <Input
+                                className="w-48"
+                                id="password"
+                                label="*******"
+                                type="password"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, ['password']: e.target.value })}
+                                size="md"
+                                required
+                            />
+
+                        </div>
+                        <div className="flex items-center justify-start space-x-4">
+                            <select
+                                id="role"
+                                className="w-56 p-2 border border-gray-400 bg-inherit rounded-md text-gray-600 font-normal"
+                                label="Select Role"
+                                animate={{
+                                    mount: { y: 0 },
+                                    unmount: { y: 25 },
+                                }}
+                                value={formData.role}
+                                onChange={(e) => setFormData({ ...formData, ['role']: e.target.value })}
+                                size="md"
+                                required
+                            >
+                                <option key={''} value={''} disabled selected>Select Role</option>
+                                {state.userInfo.role === 'super-admin' ?
+                                    userRoles.map((role) => (
+                                        <option key={role.value} value={role.value}>{role.label}</option>
+                                    ))
+                                    :
+                                    userRoles.filter((role) => role.label !== 'Admin').map(filteredRole => (
+                                        <option key={filteredRole.value} value={filteredRole.value}>{filteredRole.label}</option>
+                                    ))
+                                }
+                            </select>
+
+                            <Input
+                                className="w-48"
+                                id="dob"
+                                label="DOB"
+                                type="date"
+                                value={formData.dob}
+                                onChange={(e) => setFormData({ ...formData, ['dob']: e.target.value })}
+                            />
+                        </div>
+                        {state.userInfo.role === 'super-admin' && (
+                            <select
+                                className="w-full p-2 border border-gray-400 bg-inherit rounded-md text-gray-600 font-normal"
+                                value={business}
+                                onChange={(e) => setBusiness(e.target.value)}
+                                size="md"
+                                aria-required
+                            >
+                                <option key={''} value={''}>Select Business</option>
+                                {businesses ?
+                                    businesses.map((business) => (
+                                        <option key={business.id} value={business.id}>{business.name}, {business.location}</option>
+                                    )) : []}
+                            </select>
+                        )}
                     </form>
-                    {selectPerms.map((perm) => (
-                        <Chip key={perm.id} className="mr-2 w-48 inline" value={perm.name} icon={<XMarkIcon className="cursor-pointer" onClick={() => setSelectPerms(selectPerms.filter(item => item.id !== perm.id))} />} />
-                    ))}
-                    <form id="form2" className="mt-4">
-                        <Select
-                            label="Permissions"
-                            animate={{
-                                mount: { y: 0 },
-                                unmount: { y: 25 },
-                            }}
-                            onChange={(value) => handlePermission(JSON.parse(value))}
-                            size="md"
-                        >
-                            {permissions ?
-                                permissions.map((permission) => (
-                                    <Option key={permission.id} value={JSON.stringify(permission)}>{permission.name}</Option>
-                                )) : []}
-                        </Select>
+                    
+                    <span className="font-bold text-xl text-gray-900">PERMISSIONS</span>
+
+                    <form id="form2" className="mt-3 h-32 overflow-y-auto">
+                        
+                        {permissions &&
+                            permissions.map((permission) => (
+                                
+                                <div key={permission.id} className="mb-1 flex">
+                                    <input
+                                        className="form-checkbox h-5 w-5 text-indigo-600 transition duration-150 ease-in-out cursor-pointer"
+                                        type="checkbox"
+                                        id={`permission-${permission.id}`}
+                                        value={JSON.stringify(permission)}
+                                        checked={selectPerms.includes(permission.id)}
+                                        onChange={(e) => handlePermission(permission.id, e)}
+                                    />
+                                    <span className="ml-2 font-medium text-base" htmlFor={`permission-${permission.id}`}>{permission.name}</span>
+                                </div>
+                            ))}
                     </form>
                 </DialogBody>
                 <DialogFooter>
@@ -227,8 +305,8 @@ function UserForm({ businesses, permissions, userData, setUserData, open, handle
                     >
                         <span>Cancel</span>
                     </Button>
-                    <Button variant="gradient" color="green" onClick={update ? handleUpdate : handleAdd} >
-                        <span>{update ? 'Update' : 'Add'}</span>
+                    <Button variant="gradient" color="green" onClick={() => handleSubmit()} >
+                        <span>{edit ? 'Update' : 'Add'}</span>
                     </Button>
                 </DialogFooter>
             </Dialog>

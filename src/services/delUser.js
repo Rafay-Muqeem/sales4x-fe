@@ -1,13 +1,14 @@
-export async function delUser(id){
+export async function delUser(id, token){
     try {
-        const user = await fetch(`https://solutions4x.com/api/user/delete/${id}`, {
+        const user = await fetch(`http://localhost:5000/api/user/delete/${id}`, {
             method: "DELETE",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "auth-token": token
             },
         })
        
-        return user.json();
+        return user;
 
     } catch (error) {
         console.log(error);

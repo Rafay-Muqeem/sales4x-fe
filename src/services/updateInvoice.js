@@ -1,9 +1,10 @@
-export async function updateInvoice(id, data){
+export async function updateInvoice(id, data, token){
     try {
-        const invoice = await fetch(`https://solutions4x.com/api/invoice/update/${id}`, {
+        const invoice = await fetch(`http://localhost:5000/api/invoice/update/${id}`, {
             method: "PUT",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "auth-token": token
             },
             body: JSON.stringify(data)
         })

@@ -12,28 +12,20 @@ import {
     IconButton,
     Tooltip,
     Checkbox,
+    Spinner,
 } from "@material-tailwind/react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import MyPopUpForm from "./form";
 import { fetchProducts } from "@/services/fetchProducts";
 import { delProduct } from "@/services/delProduct";
+import { toast } from 'react-toastify';
+import { State } from "@/state/Context";
 
 const TABLE_HEAD = ["Name", "Price", "Cost", "ItemCode", "Type", "Taxable", "Actions"];
 
-// Service to fetch data from the provided API
-const fetchFakeData = async () => {
-    try {
-        const response = await fetch('https://fakestoreapi.com/products');
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error("Error fetching data:", error);
-        return [];
-    }
-};
-
 export function Product() {
+    const {state} = State();
     const [selectAll, setSelectAll] = useState(false);
     const [selectedRows, setSelectedRows] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
@@ -41,35 +33,51 @@ export function Product() {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(5);
     const [refresh, setRefresh] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     // for edit of a customer 
     const [selectedItem, setSelectedItem] = useState(null);
 
     // Modify handleRowSelect to update the selected item's data
-    const handleEditCustomer = (index) => {
+    const handleEditProduct = (index) => {
         // Assuming currentItems holds the filtered rows for display
-        const selected = currentItems[index];
-        setSelectedItem(selected);
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_EDIT_PRODUCT" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            const selected = currentItems[index];
+            setSelectedItem(selected);
+            openPopup();
+        }
+        else {
+            toast.error("You are not allowed to update a product");
+        }
     };
+
+    const showToastMessage = (type, message) => {
+        if (type === 'success') {
+            toast.success(message)
+        }
+        else if (type === 'info') {
+            toast.info(message)
+        }
+        else {
+            toast.error(message)
+        }
+    };
+
 
     useEffect(() => {
         getProducts();
     }, [refresh]);
 
     const getProducts = async () => {
-        const products = await fetchProducts();
-        setFinalItems(await products.json());
+        try {
+            const products = await fetchProducts(state.userToken);
+            setFinalItems(await products.json());
+            setLoading(false);
+        } catch (error) {
+            console.log(error.message);
+            showToastMessage('error', "Something went wrong");
+        }
     }
-
-    // Fetch data from API when the component mounts
-    // useEffect(() => {
-    //     const fetchData = async () => {
-    //         const data = await fetchFakeData();
-    //         setFinalItems(data);
-    //     };
-
-    //     fetchData();
-    // }, []);
 
     // Function to handle header checkbox change
     const handleSelectAll = (event) => {
@@ -109,7 +117,6 @@ export function Product() {
         ({ name, itemCode }) =>
             name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             itemCode.toLowerCase().includes(searchQuery.toLowerCase())
-        // phone.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     // Calculate the indexes of the items to display based on pagination
@@ -139,11 +146,27 @@ export function Product() {
         // setFinalItems(updatedItems);
         // setSelectedRows([]);
         // setSelectAll(false);
-        try {
-            const res = await delProduct(id);
-            setRefresh(!refresh);
-        } catch (error) {
-            console.log(error)
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_DELETE_PRODUCT" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            try {
+                const res = await delProduct(id, state.userToken);
+                const product = await res.json();
+                if (res.status === 200) {
+                    showToastMessage('success', product.message)
+                }
+                else if (res.status === 404) {
+                    showToastMessage('info', product.message)
+                }
+                else if (res.status === 500) {
+                    showToastMessage('error', "You must delete its foreign key relations first");
+                }
+                setRefresh(!refresh);
+            } catch (error) {
+                console.log(error)
+                showToastMessage('error', "You must delete its foreign key relations first");
+            }
+        }
+        else {
+            toast.error("You are not allowed to delete a product");
         }
     };
 
@@ -156,12 +179,20 @@ export function Product() {
     // Popup state
     const [isOpen, setIsOpen] = useState(false);
     const openPopup = () => {
-        setIsOpen(true);
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_ADD_PRODUCT" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            setIsOpen(true);
+        }
+        else {
+            toast.error("You are not allowed to add a product")
+        }
     };
     const closePopup = () => {
         setIsOpen(false);
     };
 
+    if (loading) {
+        return <Spinner className="mx-auto mt-[30vh] h-10 w-10 text-gray-900/50" />
+    }
     return (
         <>
             <Card className="h-full w-full ">
@@ -259,8 +290,7 @@ export function Product() {
                                                 to="#"
                                                 className="text-blue-gray font-normal hover:underline"
                                                 onClick={() => {
-                                                    handleEditCustomer(index);
-                                                    openPopup();
+                                                    handleEditProduct(index);
                                                 }}
                                             >
                                                 {name}

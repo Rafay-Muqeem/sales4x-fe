@@ -1,7 +1,10 @@
-export async function fetchTaxes(){
+export async function fetchTaxes(token){
     try {
-        const taxes = await fetch("https://solutions4x.com/api/tax/", {
+        const taxes = await fetch("http://localhost:5000/api/tax/", {
             method: "GET",
+            headers: {
+                "auth-token": token
+            }
         })
        
         return taxes;
