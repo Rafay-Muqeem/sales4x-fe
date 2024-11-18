@@ -8,21 +8,23 @@ import { updateProduct } from "@/services/updateProduct";
 import { toast } from 'react-toastify';
 import { State } from "@/state/Context";
 import { fetchTaxes } from "@/services/fetchTaxes";
+import dummyImage from "../../assets/dummyImage.png"
 
 const schema = Yup.object().shape({
-  name: Yup.string().required("Name is required"),
-  cost: Yup.number().required("Cost is required"),
-  margin: Yup.number().required("Margin is required"),
-  price: Yup.number().required("Price is required"),
-  itemCode: Yup.string(),
   type: Yup.string().required("Type is required"),
+  name: Yup.string().required("Name is required"),
+  cost: Yup.string().required("Cost is required"),
+  margin: Yup.string().required("Margin is required"),
+  price: Yup.string().required("Price is required"),
+  itemCode: Yup.string(),
   description: Yup.string(),
   taxable: Yup.boolean(true).required("Field is required"),
-  image: Yup.mixed()
-    .test(
+  image: Yup.mixed().test(
       'fileType',
       'Only image files are allowed',
       (value) => {
+        if (!value) return true;
+        if (typeof value === 'string') return true;
         return (
           !value ||
           (value && ['image/jpeg', 'image/png', 'image/gif'].includes(value.type.toLowerCase()))
@@ -36,13 +38,14 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
   const [edit, setEdit] = useState(false);
   const [taxes, setTaxes] = useState([]);
   const [selectedTaxes, setSelectedTaxes] = useState([]);
-  const [image, setImage] = useState('');
-
+  const [productPreviewPic, setProductPreviewPic] = useState(null);
+  
   const handleClose = () => {
     clearForm(formikProps);
     setEdit(false);
     setSelectedItem(null);
     setSelectedTaxes([]);
+    setProductPreviewPic(null);
     close();
   };
 
@@ -60,6 +63,10 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
 
   useEffect(() => {
     if (selectedItem) {
+      console.log(selectedItem)
+      // separating image from product data
+      const { image, ...restItemData } = selectedItem;
+      setProductPreviewPic(image);
       formikProps.setValues(selectedItem);
       setSelectedTaxes(selectedItem.Tax.map((tax) => (tax.id)))
       setEdit(true);
@@ -77,42 +84,36 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
   };
 
   const onSubmit = async (values) => {
-    const formData = new FormData();
-    formData.append('name', values.name);
-    formData.append('cost', values.cost);
-    formData.append('price', values.price);
-    formData.append('itemCode', values.itemCode);
-    formData.append('type', values.type);
-    formData.append('description', values.description);
-    formData.append('taxable', values.taxable);
+    const productData = new FormData();
+    productData.append('name', values.name);
+    productData.append('cost', values.cost);
+    productData.append('margin', values.margin);
+    productData.append('price', values.price);
+    productData.append('itemCode', values.itemCode);
+    productData.append('type', values.type);
+    productData.append('description', values.description);
+    productData.append('taxable', values.taxable);
+    productData.append('image', values.image);
+    productData.append('taxes', JSON.stringify(selectedTaxes));
 
-    if (values.image && values.image instanceof File) {
-      formData.append('image', values.image);
-    } else {
-      console.error("Image is not a valid File object");
-    }
-
-    for (let [key, value] of formData.entries()) {
-      console.log(`${key}:`, value);
-    }
     try {
-      const data = {
-        // productData: {
-        //   name: values.name,
-        //   image: values.image,
-        //   cost: values.cost,
-        //   price: values.price,
-        //   itemCode: values.itemCode, 
-        //   type: values.type,
-        //   description: values.description,
-        //   taxable: values.taxable
-        // },
-        productData: formData,
-        taxes: selectedTaxes
-      }
+      // const productData = {
+      //   name: values.name,
+      //   cost: values.cost,
+      //   price: values.price,
+      //   itemCode: values.itemCode, 
+      //   type: values.type,
+      //   description: values.description,
+      //   taxable: values.taxable,
+      //   taxes: selectedTaxes,
+      // }
+      // const data = {
+      //   productDetails: JSON.stringify(productData),
+      //   productImage: productImageFile
+      // }
 
       if (!edit) {
-        const res = await addProduct(formData, state.userToken);
+        const res = await addProduct(productData, state.userToken);
         const product = await res.json();
         if (res.status === 200) {
           showToastMessage('success', product.message)
@@ -122,7 +123,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
         }
       }
       else {
-        const res = await updateProduct(selectedItem.id, data, state.userToken);
+        const res = await updateProduct(selectedItem.id, productData, state.userToken);
         const product = await res.json();
         if (res.status === 200) {
           showToastMessage('success', product.message)
@@ -166,7 +167,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
         type: "",
         description: "",
         taxable: false,
-        image: ""
+        image: productPreviewPic
       },
       errors: {
         name: "",
@@ -213,7 +214,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
   return (
     <Dialog open={open}>
       {open && (
-        <form onSubmit={handleSubmit} autoComplete="new" enctype="multipart/form-data">
+        <form onSubmit={ (e) => handleSubmit(e)} autoComplete="new">
           <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center">
             <div className="bg-white rounded shadow-xl">
               <div className="flex items-center justify-between sticky bg-gradient-to-br from-gray-800 to-gray-700">
@@ -243,23 +244,28 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
                 </button>
               </div>
 
-              <div className="p-6">
-                <div className="flex items-center justify-start space-x-4 mb-3 w-full">
-                  <label className="font-bold">Image</label>
-                  <input
-                    className="w-full p-2 border border-gray-300 bg-inherit rounded-md"
-                    id="image"
-                    name="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      setFieldValue('image', file);
-                    }}
-                  />
-                  {touched.image && errors.image ? (
-                    <div className="text-red-500">{errors.image}</div>
-                  ) : null}
+              <div className="p-6 overflow-y-auto max-h-[80vh]">
+                <div className="flex justify-between space-x-4 mb-3 w-full">
+                  <div className="basis-[50%]">
+                    <label className="font-bold">Image</label>
+                    <input
+                      className="w-full p-2 border border-gray-300 bg-inherit rounded-md"
+                      id="image"
+                      name="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        setProductPreviewPic(URL.createObjectURL(e.target.files[0]))
+                        setFieldValue('image', e.target.files[0]);
+                      }}
+                    />
+                    {touched.image && errors.image ? (
+                      <div className="text-red-500">{errors.image}</div>
+                    ) : null}
+                  </div>
+                  <div className="basis-[50%] max-h-[150px] overflow-hidden max-w-fit">
+                    <img src={productPreviewPic? productPreviewPic : dummyImage} alt="Product" width={150} height={150} />
+                  </div>
                 </div>
                 <div className="flex items-center justify-start space-x-4 mb-3 w-full">
                   <div className="basis-[33.33%]">
@@ -329,7 +335,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
                       name="cost"
                       type="number"
                       value={values.cost}
-                      // onChange={handleChange}
                       onChange={(e) => setValues({ ...values, cost: parseFloat(e.target.value) || '', price: parseFloat(e.target.value) + ((parseFloat(e.target.value) * values.margin) / 100) })}
                       onBlur={handleBlur}
                     />
@@ -347,7 +352,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
                       name="margin"
                       type="number"
                       value={values.margin}
-                      onChange={(e) => setValues({ ...values, margin: parseFloat(e.target.value) || '', price: values.cost + ((values.cost * parseFloat(e.target.value) || 0) / 100) })}
+                      onChange={(e) => setValues({ ...values, margin: parseFloat(e.target.value) || 0, price: values.cost + ((values.cost * parseFloat(e.target.value) || 0) / 100) })}
                       onBlur={handleBlur}
                     />
                     {(touched.margin && errors.margin) ? (
@@ -365,7 +370,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
                       name="price"
                       type="number"
                       value={values.price}
-                      onChange={handleChange}
                       onBlur={handleBlur}
                       disabled={true}
                     />

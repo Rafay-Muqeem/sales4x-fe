@@ -93,7 +93,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
     try {
       const res = await fetchBusiness(state.userToken);
       const businesses = await res.json();
-      console.log(businesses);
       setBusiness(businesses[0].id)
       setBusinesses(businesses)
     } catch (error) {
@@ -138,6 +137,8 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
       setSelectedProducts(selectedProd);
       setSelectedInvoice(null)
     }
+
+    console.log(selectedCustomer)
   }, [selectedInvoice])
 
   const onSubmit = async (values) => {
@@ -446,7 +447,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                   </button>
                 </div>
 
-                <div className="overflow-y-auto h-[80vh] overflow-x-hidden">
+                <div className="overflow-y-auto h-[80vh] overflow-x-hidden p-2">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="p-2 font-bold">Customer</label> <br />
@@ -539,16 +540,16 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                       <div>
                         <label className="p-2 font-bold">Address</label> <br />
 
-                        <input
-                          className="w-48 lg:w-96 m-2 p-2 border border-gray-300 rounded-md text-black"
+                        <textarea
+                          className="w-48 lg:w-80 m-2 p-2 border border-gray-300 rounded-md text-black"
                           id="address"
                           name="address"
                           type="text"
-                          value={selectedCustomer ? selectedCustomer.address : ''}
+                          value={selectedCustomer ? `${selectedCustomer.Address.street}, ${selectedCustomer.Address.city}` : ''}
                           disabled
                         />
                       </div>
-                    </div>n
+                    </div>
 
                     <div className="flex flex-col ">
                       <div className="text-5xl mt-5">

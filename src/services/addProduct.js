@@ -6,7 +6,7 @@ export async function addProduct(data, token){
                 // "Content-Type": "application/json",
                 "auth-token": token
             },
-            body: JSON.stringify(data)
+            body: data
         })
        
         return product;

@@ -70,8 +70,9 @@ export function Product() {
 
     const getProducts = async () => {
         try {
-            const products = await fetchProducts(state.userToken);
-            setFinalItems(await products.json());
+            const products = await (await fetchProducts(state.userToken)).json();
+            console.log(products)
+            setFinalItems(products);
             setLoading(false);
         } catch (error) {
             console.log(error.message);
@@ -109,11 +110,10 @@ export function Product() {
                 selectedRows.slice(selectedIndex + 1)
             );
         }
-
         setSelectedRows(newSelectedRows);
     };
 
-    const filteredRows = finalItems.filter(
+    const filteredRows = finalItems?.filter(
         ({ name, itemCode }) =>
             name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             itemCode.toLowerCase().includes(searchQuery.toLowerCase())

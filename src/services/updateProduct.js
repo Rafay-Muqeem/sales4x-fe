@@ -4,10 +4,10 @@ export async function updateProduct(id, data, token){
         const product = await fetch(`http://localhost:5000/api/product/update/${id}`, {
             method: "PUT",
             headers: {
-                "Content-Type": "application/json",
+                // "Content-Type": "application/json",
                 "auth-token": token
             },
-            body: JSON.stringify(data)
+            body: data
         })
        
         return product;
