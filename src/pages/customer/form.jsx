@@ -71,7 +71,6 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
     setEdit(false);
     setSelectedItem(null);
     setBusiness('');
-    // setCustomerType('personal')
     close();
   };
 
@@ -188,7 +187,6 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
         },
         notes: "",
         taxable: true,
-        // BusinessId: "",
       },
       errors: {
         firstName: "",
@@ -205,7 +203,6 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
         },
         notes: "",
         taxable: true,
-        // BusinessId: "",
       },
     });
   };
@@ -226,7 +223,6 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
       },
       notes: "",
       taxable: true,
-      // BusinessId: "",
     },
     validationSchema: schema,
     onSubmit,
@@ -431,14 +427,13 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                 </div>
 
                 <div className="mt-4">
-                  <h3 className="font-bold">Address</h3>
                   <div className="flex items-center justify-start space-x-4 w-full">
 
                     <div className="basis-[40%]">
+                      <label className="font-bold">Street</label> <br />
                       <input className="p-2 border border-gray-300 rounded-md text-black font-medium"
                         id="Address.street"
                         name="Address.street"
-                        placeholder="Street"
                         type="text"
                         value={values?.Address?.street}
                         onChange={handleChange}
@@ -452,10 +447,10 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                     </div>
 
                     <div className="basis-[20%]">
+                      <label className="font-bold">City</label> <br />
                       <input className="p-2 border border-gray-300 rounded-md text-black font-medium"
                         id="Address.city"
                         name="Address.city"
-                        placeholder="City"
                         type="text"
                         value={values?.Address?.city}
                         onChange={handleChange}
@@ -469,10 +464,10 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                     </div>
 
                     <div className="basis-[20%]">
+                      <label className="font-bold">State</label> <br />
                       <input className="p-2 border border-gray-300 rounded-md text-black font-medium"
                         id="Address.state"
                         name="Address.state"
-                        placeholder="State"
                         type="text"
                         value={values?.Address?.state}
                         onChange={handleChange}
@@ -486,10 +481,10 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                     </div>
 
                     <div className="basis-[20%]">
+                      <label className="font-bold">Zip Code</label> <br />
                       <input className="p-2 border border-gray-300 rounded-md text-black font-medium"
                         id="Address.zipcode"
                         name="Address.zipcode"
-                        placeholder="zip code"
                         type="text"
                         value={values?.Address?.zipcode}
                         onChange={handleChange}
