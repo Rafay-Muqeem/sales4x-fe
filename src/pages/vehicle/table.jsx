@@ -11,16 +11,20 @@ import {
     CardFooter,
     IconButton,
     Tooltip,
+    Spinner,
 } from "@material-tailwind/react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import MyPopUpForm from "./form";
 import { fetchVehicles } from "@/services/fetchVehicles";
 import { delVehicle } from "@/services/delVehicle";
+import {toast} from 'react-toastify';
+import { State } from "@/state/Context";
 
 const TABLE_HEAD = ["Make", "Model", "year", "Actions"];
 
 export function Vehicles() {
+    const {state} = State();    
     const [selectAll, setSelectAll] = useState(false);
     const [selectedRows, setSelectedRows] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
@@ -28,15 +32,34 @@ export function Vehicles() {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(5);
     const [refresh, setRefresh] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     // for edit of a vehicle 
     const [selectedItem, setSelectedItem] = useState(null);
 
     // Modify handleRowSelect to update the selected item's data
-    const handleEditCustomer = (index) => {
+    const handleEditVehicle = (index) => {
         // Assuming currentItems holds the filtered rows for display
-        const selected = currentItems[index];
-        setSelectedItem(selected);
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_EDIT_VEHICLE" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            const selected = currentItems[index];
+            setSelectedItem(selected);
+            openPopup();
+        }
+        else {
+            toast.error("You are not allowed to update a vehicle");
+        }
+    };
+
+    const showToastMessage = (type, message) => {
+        if (type === 'success') {
+            toast.success(message)
+        }
+        else if (type === 'info') {
+            toast.info(message)
+        }
+        else {
+            toast.error(message)
+        }
     };
 
     // Fetch data from API when the component mounts
@@ -45,8 +68,14 @@ export function Vehicles() {
     }, [refresh]);
 
     const getVehicles = async () => {
-        const vehicles = await fetchVehicles();
-        setFinalItems(await vehicles.json());
+        try {
+            const vehicles = await fetchVehicles(state.userToken);            
+            setFinalItems(await vehicles.json());
+            setLoading(false)
+        } catch (error) {
+            console.log(error);
+            toast.error("Something went wrong")
+        }
     }
 
     // Function to handle header checkbox change
@@ -117,12 +146,27 @@ export function Vehicles() {
         // setFinalItems(updatedItems);
         // setSelectedRows([]);
         // setSelectAll(false);
-
-        try {
-            const res = await delVehicle(id);
-            setRefresh(!refresh);
-        } catch (error) {
-            console.log(error)
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_DELETE_VEHICLE" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            try {
+                const res = await delVehicle(id, state.userToken);
+                const vehicle = await res.json();
+                if (res.status === 200) {
+                    showToastMessage('success', vehicle.message)
+                }
+                else if (res.status === 404) {
+                    showToastMessage('info', vehicle.message)
+                }
+                else if (res.status === 500) {
+                    showToastMessage('error', "You must delete its foreign key relations first");
+                }
+                setRefresh(!refresh);
+            } catch (error) {
+                console.log(error)
+                showToastMessage('error', "You must delete its foreign key relations first");
+            }
+        }
+        else {
+            toast.error("You are not allowed to delete a vehicle");
         }
     };
 
@@ -134,13 +178,22 @@ export function Vehicles() {
 
     // Popup state
     const [isOpen, setIsOpen] = useState(false);
+
     const openPopup = () => {
-        setIsOpen(true);
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_ADD_VEHICLE" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            setIsOpen(true);
+        }
+        else {
+            toast.error("You are not allowed to add a vehicle")
+        }
     };
     const closePopup = () => {
         setIsOpen(false);
     };
 
+    if (loading) {
+        return <Spinner className="mx-auto mt-[30vh] h-10 w-10 text-gray-900/50" />
+    }
     return (
         <>
             <Card className="h-full w-full ">
@@ -151,9 +204,9 @@ export function Vehicles() {
                             Vehicles
                         </Typography>
                     </div>
-                    <div className="flex flex-col lg:flex-row items-center w-full mt-5">
-                        <div className="w-full lg:w-2/5 flex items-center justify-center lg:justify-start gap-2">
-                            <div className="w-full lg:flex-1 lg:mr-4">
+                    <div className="flex flex-col md:flex-row items-center w-full mt-5">
+                        <div className="w-full md:w-2/5 flex items-center justify-center md:justify-start gap-2">
+                            <div className="w-full md:flex-1 md:mr-4">
                                 <Input
                                     label="Search"
                                     value={searchQuery}
@@ -170,7 +223,7 @@ export function Vehicles() {
                                     </Button> */}
                             </div>
                         </div>
-                        <div className="flex items-center mt-4 lg:mt-0 lg:ml-auto">
+                        <div className="flex items-center mt-4 md:mt-0 md:ml-auto">
                             <Typography variant="small" color="blue-gray" className="mr-2">
                                 Items per page:
                             </Typography>
@@ -238,8 +291,7 @@ export function Vehicles() {
                                                 to="#"
                                                 className="text-blue-gray font-normal hover:underline"
                                                 onClick={() => {
-                                                    handleEditCustomer(index);
-                                                    openPopup();
+                                                    handleEditVehicle(index);
                                                 }}
                                             >
                                                 {make}
@@ -264,7 +316,7 @@ export function Vehicles() {
                                             </Typography>
                                         </td>
                                         <td className={classes}>
-                                            <Tooltip content="Delete Customer">
+                                            <Tooltip content="Delete Vehicle">
                                                 <IconButton variant="text" onClick={() => handleDelete(id)}>
                                                     <TrashIcon className="h-6 w-6 text-red-600" />
                                                 </IconButton>

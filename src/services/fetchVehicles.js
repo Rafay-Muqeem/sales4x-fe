@@ -1,7 +1,10 @@
-export async function fetchVehicles(){
+export async function fetchVehicles(token){
     try {
-        const vehicles = await fetch("https://solutions4x.com/api/vehicle/", {
+        const vehicles = await fetch("http://localhost:5000/api/vehicle/", {
             method: "GET",
+            headers: {
+                "auth-token": token
+            }
         })
        
         return vehicles;

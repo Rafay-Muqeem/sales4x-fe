@@ -5,12 +5,15 @@ import {
   Typography,
   Spinner,
 } from "@material-tailwind/react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { signIn } from "@/services/signIn";
-
+import { toast } from 'react-toastify';
+import { State } from "@/state/Context";
 
 export function SignIn() {
 
+  const {state} = State();
+  
   useEffect(() => {
     try {
       const token = JSON.parse(localStorage.getItem('Token'));
@@ -25,11 +28,24 @@ export function SignIn() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [password, setPassword] = useState(''); 
+  const [loading, setLoading] = useState(false);
+
+  const showToastMessage = (type, message) => {
+    if (type === 'success') {
+      toast.success(message)
+    }
+    else if (type === 'info') {
+      toast.info(message)
+    }
+    else {
+      toast.error(message)
+    }
+  };
 
   async function handleSignIn() {
 
+    setLoading(true);
     const data = {
       email: email,
       password: password
@@ -40,27 +56,28 @@ export function SignIn() {
       if (res.status !== 404) {
         setEmail('');
         setPassword('');
+        setLoading(false);
         localStorage.setItem('Token', JSON.stringify(user.token));
         localStorage.setItem('sessionExp', JSON.stringify(user.sessionExpire));
-        navigate('/dashboard')
+        navigate('/dashboard/home')
+      }
+      else {
+        setLoading(false);
+        showToastMessage('info', user.message)
       }
     } catch (error) {
       console.log(error)
+      setLoading(false);
+      showToastMessage('error', "Something went wrong")
     }
 
   }
-
-  useEffect(() => {
-    setTimeout( () => {
-      setLoading(false)
-    }, 2000)
-  }, [])
 
   if (loading) {
     return <Spinner className="mx-auto mt-[40vh] h-10 w-10 text-gray-900/50" />
   }
   return (
-    <section className="w-full mt-24">
+    <section className="w-full pt-24 h-screen">
       <div className="text-center">
         <Typography variant="h2" className="font-bold mb-4">Sign In</Typography>
         <Typography variant="paragraph" color="blue-gray" className="text-lg font-normal">Enter your email and password to Sign In.</Typography>

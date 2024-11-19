@@ -11,7 +11,9 @@ const Context = ({children}) => {
                 invoice: 'current',
             }
         },
-        userToken: ''
+        userToken: '',
+        business: '',
+        userInfo: {},
     }
     const [state, dispatch] = useReducer(Reducer, initialState)
 

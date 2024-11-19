@@ -9,6 +9,7 @@ import {
     CardFooter,
     IconButton,
     Tooltip,
+    Spinner,
 } from "@material-tailwind/react";
 import { DocumentTextIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
@@ -17,6 +18,7 @@ import { Link } from "react-router-dom";
 import { State } from "../../state/Context";
 import { fetchQuotations } from "@/services/fetchQuotations";
 import { delQuotation } from "@/services/delQuotaion";
+import { toast } from "react-toastify";
 
 const TABLE_HEAD = ["Customer", "Total", "Quotation Date", "Vehicle", "Actions"];
 
@@ -30,32 +32,72 @@ export function Quotation() {
     const [refresh, setRefresh] = useState(false);
     const [selectedQuotation, setSelectedQuotation] = useState(null);
     const [isOpen, setIsOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    const showToastMessage = (type, message) => {
+        if (type === 'success') {
+            toast.success(message)
+        }
+        else if (type === 'info') {
+            toast.info(message)
+        }
+        else {
+            toast.error(message)
+        }
+    };
 
     useEffect(() => {
         getQuotations();
     }, [refresh]);
 
     const getQuotations = async () => {
-        const fetchedQuotations = await fetchQuotations();
-        const totalQuotaions = await fetchedQuotations.json();
-        setQuotations(totalQuotaions);
+        try {
+            const fetchedQuotations = await fetchQuotations(state.userToken);
+            const totalQuotations = await fetchedQuotations.json();
+            console.log(totalQuotations);
+            setQuotations(totalQuotations);
+            setLoading(false);
+        } catch (error) {
+            console.log(error.message);
+            showToastMessage('error', 'Something went wrong')
+        }
     };
 
     const handleEditQuotation = (index) => {
         // Assuming currentItems holds the filtered rows for display
-        const selected = currentItems[index];
-        setSelectedQuotation(selected);
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_EDIT_QUOTATION" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            const selected = currentItems[index];
+            setSelectedQuotation(selected);
+            openPopup();
+        }
+        else {
+            toast.error("You are not allowed to update a quotation");
+        }
     };
 
     const handleDeleteQuotation = async (index) => {
-        const updatedQuotations = quotations.filter((_, rowIndex) => rowIndex !== index);
-        const deletedQuotationId = quotations.find((_, rowIndex) => rowIndex === index);
-        setQuotations(updatedQuotations);
-        try {
-            const res = await delQuotation(deletedQuotationId['id']);
-            setRefresh(!refresh);
-        } catch (error) {
-            console.log(error)
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_DELETE_QUOTATION" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            const updatedQuotations = quotations.filter((_, rowIndex) => rowIndex !== index);
+            const deletedQuotationId = quotations.find((_, rowIndex) => rowIndex === index);
+            setQuotations(updatedQuotations);
+            try {
+                const res = await delQuotation(deletedQuotationId['id'], state.userToken);
+                const quotation = await res.json();
+                if (res.status === 200) {
+                    showToastMessage('success', quotation.message)
+                }
+                else if (res.status === 404) {
+                    showToastMessage('info', quotation.message)
+                }
+                setRefresh(!refresh);
+
+            } catch (error) {
+                console.log(error);
+                showToastMessage('error', "Something went wrong");
+            }
+        }
+        else {
+            toast.error("You are not allowed to delete a quotation");
         }
     };
 
@@ -74,7 +116,8 @@ export function Quotation() {
             ({ Customer }) =>
                 Customer['firstName'].toLowerCase().includes(searchQuery.toLowerCase()) ||
                 Customer['lastName'].toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        )
+
         currentItems = filteredRows.slice(indexOfFirstItem, indexOfLastItem);
     }
 
@@ -89,13 +132,21 @@ export function Quotation() {
     };
 
     const openPopup = () => {
-        setIsOpen(true);
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_CREATE_QUOTATION" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            setIsOpen(true);
+        }
+        else {
+            toast.error("You are not allowed to create a quotation");
+        }
     };
 
     const closePopup = () => {
         setIsOpen(false);
     };
 
+    if (loading) {
+        return <Spinner className="mx-auto mt-[30vh] h-10 w-10 text-gray-900/50" />
+    }
     return (
         <>
             <Card className="h-full w-full ">
@@ -144,7 +195,6 @@ export function Quotation() {
                     <table className=" w-full min-w-max table-auto text-left">
                         <thead>
                             <tr>
-
                                 {TABLE_HEAD.map((head) => (
                                     <th
                                         key={head}
@@ -159,10 +209,24 @@ export function Quotation() {
                                         </Typography>
                                     </th>
                                 ))}
+                                {state.userInfo.role === 'super_admin' && (
+                                    <th
+                                        key={'BUSINESS'}
+                                        className="border-y border-blue-gray-100 bg-blue-gray-50/50 p-4"
+                                    >
+                                        <Typography
+                                            variant="small"
+                                            color="blue-gray"
+                                            className="font-normal leading-none opacity-70"
+                                        >
+                                            BUSINESS
+                                        </Typography>
+                                    </th>
+                                )}
                             </tr>
                         </thead>
                         <tbody>
-                            {currentItems.map(({ id, Customer, totalAmount, createdAt, Vehicle }, index) => {
+                            {currentItems.map(({ id, Customer, totalAmount, createdAt, Vehicle, Business }, index) => {
                                 const isLast = index === currentItems.length - 1;
                                 const classes = isLast
                                     ? "p-4"
@@ -175,7 +239,6 @@ export function Quotation() {
                                                 className="text-blue-gray font-normal hover:underline"
                                                 onClick={() => {
                                                     handleEditQuotation(index);
-                                                    openPopup();
                                                 }}
                                             >
                                                 {Customer['firstName']} {Customer['lastName']}
@@ -211,7 +274,7 @@ export function Quotation() {
                                         </td>
 
                                         <td className={classes}>
-                                            <Tooltip content="Delete Invoice">
+                                            <Tooltip content="Delete Quotation">
                                                 <IconButton variant="text" onClick={() => {
                                                     handleDeleteQuotation(index)
                                                 }}>
@@ -219,6 +282,17 @@ export function Quotation() {
                                                 </IconButton>
                                             </Tooltip>
                                         </td>
+                                        {state.userInfo.role === 'super_admin' && (
+                                            <td className={classes}>
+                                                <Typography
+                                                    variant="small"
+                                                    color="blue-gray"
+                                                    className="font-normal opacity-70"
+                                                >
+                                                    {Business.name}
+                                                </Typography>
+                                            </td>
+                                        )}
                                     </tr>
                                 );
                             },

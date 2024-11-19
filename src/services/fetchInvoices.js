@@ -1,7 +1,10 @@
-export async function fetchInvoices(){
+export async function fetchInvoices(token){
     try {
-        const invoices = await fetch("https://solutions4x.com/api/invoice/", {
+        const invoices = await fetch("http://localhost:5000/api/invoice/", {
             method: "GET",
+            headers: {
+                "auth-token": token
+            }
         })
        
         return invoices;

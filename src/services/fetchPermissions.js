@@ -1,7 +1,10 @@
-export async function fetchPermissions(){
+export async function fetchPermissions(token){
     try {
-        const permissions = await fetch("https://solutions4x.com/api/permission/", {
+        const permissions = await fetch("http://localhost:5000/api/permission/", {
             method: "GET",
+            headers: {
+                "auth-token": token
+            }
         })
        
         return permissions;

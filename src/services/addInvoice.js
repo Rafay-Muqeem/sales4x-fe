@@ -1,10 +1,11 @@
-export async function addInvoice(data){
+export async function addInvoice(data, token){
     console.log(data);
     try {
-        const invoice = await fetch("https://solutions4x.com/api/invoice/create", {
+        const invoice = await fetch("http://localhost:5000/api/invoice/create", {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "auth-token": token
             },
             body: JSON.stringify(data)
         })

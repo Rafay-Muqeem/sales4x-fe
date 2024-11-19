@@ -14,13 +14,14 @@ import {
 import { fetchProducts } from "@/services/fetchProducts";
 import { fetchCustomers } from "@/services/fetchCustomers";
 import { fetchTaxes } from "@/services/fetchTaxes";
-import { addInvoice } from "@/services/addInvoice";
 import { fetchVehicles } from "@/services/fetchVehicles";
-import { updateInvoice } from "@/services/updateInvoice";
-import PrintView from "./printView";
 import ReactToPrint from "react-to-print";
 import { updateQuotation } from "@/services/updateQuotation";
 import { addQuotaion } from "@/services/addQuotation";
+import PrintView from "./printView";
+import { toast } from "react-toastify";
+import { State } from "@/state/Context";
+import { fetchBusiness } from "@/services/fetchBusiness";
 
 const TABLE_HEAD = [
     "Product",
@@ -39,6 +40,7 @@ const schema = Yup.object().shape({
 const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setSelectedQuotation }) => {
     const componentRef = useRef();
 
+    const { state } = State();
     const [customers, setCustomers] = useState([]);
     const [vehicles, setVehicles] = useState([]);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -56,6 +58,39 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
     const [quotationId, seQuotationId] = useState('');
     const [edit, setEdit] = useState(false);
     const [printInvoice, setPrintInvoice] = useState([]);
+    const [businesses, setBusinesses] = useState([]);
+    const [business, setBusiness] = useState(null);
+
+    const showToastMessage = (type, message) => {
+        if (type === 'success') {
+            toast.success(message)
+        }
+        else if (type === 'info') {
+            toast.info(message)
+        }
+        else {
+            toast.error(message)
+        }
+    };
+
+    const getBusinesses = async () => {
+        try {
+            const res = await fetchBusiness(state.userToken);
+            const businesses = await res.json();
+            setBusiness(businesses[0].id)
+            setBusinesses(businesses)
+        } catch (error) {
+            toast.error("Something went wrong")
+        }
+    }
+
+    useEffect(() => {
+        getBusinesses();
+        getProducts();
+        getCustomers();
+        getVehicles();
+        getTaxes();
+    }, [])
 
     const handleClose = () => {
         setSelectedCustomer(null)
@@ -69,15 +104,11 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
         }]);
         clearForm(formikProps);
         setEdit(false)
+        setBusiness(null);
         close();
     };
 
     useEffect(() => {
-        getProducts();
-        getCustomers();
-        getVehicles();
-        getTaxes();
-
         if (selectedQuotation) {
             setPrintInvoice(selectedQuotation);
             seQuotationId(selectedQuotation.id)
@@ -86,6 +117,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
             setProducts(selectedQuotation.Product)
             setValues({ ...values, ['customer']: selectedQuotation.CustomerId, ['vehicle']: selectedQuotation.VehicleId, ['paymentMethod']: selectedQuotation.paymentMethod })
             setEdit(true)
+            setBusiness(selectedQuotation.BusinessId);
 
             let selectedProd = [...selectedProducts]
             selectedQuotation.Product.forEach((prod) => {
@@ -98,7 +130,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
                     taxable: prod.taxable
                 }
                 selectedProd = [aProd, ...selectedProd];
-
             })
             setSelectedProducts(selectedProd);
             setSelectedQuotation(null)
@@ -106,7 +137,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
 
     }, [selectedQuotation]);
 
-    const onSubmit = async (values) => {
+    const onSubmit = async () => {
         const selectedProductIds = selectedProducts.map((product) => `${product.id}:${product.quantity}`);
         selectedProductIds.pop();
 
@@ -114,25 +145,55 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
             quotationData: {
                 totalAmount: calculateTotalAmountWithTax(),
                 CustomerId: selectedCustomer.id,
-                VehicleId: selectedVehicle.id
+                VehicleId: selectedVehicle.id,
+                BusinessId: null
             },
-            "products": selectedProductIds,
+            products: selectedProductIds,
         };
-
-        if (edit) {
-            const res = await updateQuotation(quotationId, data)
+        let updatedData = {};
+        if (state.userInfo.role === 'super-admin') {
+            updatedData = { ...data, quotationData: { ...data.quotationData, BusinessId: business } };
         }
         else {
-            const res = await addQuotaion(data)
+            updatedData = { ...data, quotationData: { ...data.quotationData, BusinessId: state.business.id } };
+        }
+
+        if (edit) {
+            const res = await updateQuotation(quotationId, updatedData, state.userToken);
+            const quotation = await res.json();
+            if (res.status === 200) {
+                showToastMessage('success', quotation.message)
+            }
+            else if (res.status === 404) {
+                showToastMessage('info', quotation.message)
+            }
+            else if (res.status === 409) {
+                showToastMessage('error', quotation.message)
+            }
+        }
+        else {
+            const res = await addQuotaion(updatedData, state.userToken);
+            const quotation = await res.json();
+            if (res.status === 200) {
+                showToastMessage('success', quotation.message)
+            }
+            else if (res.status === 409) {
+                showToastMessage('error', quotation.message)
+            }
         }
         setRefresh(!refresh);
         handleClose();
     };
 
     const getProducts = async () => {
-        const fetchedProducts = await fetchProducts();
-        const productsData = await fetchedProducts.json();
-        setProducts(productsData);
+        try {
+            const fetchedProducts = await fetchProducts(state.userToken);
+            const productsData = await fetchedProducts.json();
+            setProducts(productsData);
+        } catch (error) {
+            console.log(error);
+            toast.error("Something went wrong")
+        }
     };
 
     const handleProductChange = async (index, quantity, selectedProId) => {
@@ -140,7 +201,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
         updatedItems[index].product = selectedProId; // Assign the selected product's ID to product
 
         const existingProductIndex = selectedProducts.findIndex(prod => prod.id === selectedProId);
-        console.log(existingProductIndex);
         if (existingProductIndex !== -1) {
             const updatedItems = [...selectedProducts];
             updatedItems[existingProductIndex].quantity += quantity;
@@ -153,7 +213,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
                 (product) => product.id === selectedProId
             );
 
-            console.log(selectedProductDetails);
             if (selectedProductDetails) {
                 updatedItems[index].id = selectedProductDetails.id; // Assign the selected product's ID
                 updatedItems[index].name = selectedProductDetails.name;
@@ -190,7 +249,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
 
     const handleQuantityChange = (index, quantity) => {
         const updatedItems = [...selectedProducts];
-        updatedItems[index].quantity = quantity;
+        updatedItems[index].quantity = Number(quantity);
         setSelectedProducts(updatedItems);
     };
 
@@ -213,13 +272,13 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
     };
 
     const getCustomers = async () => {
-        const fetchedCustomers = await fetchCustomers();
+        const fetchedCustomers = await fetchCustomers(state.userToken);
         const customersData = await fetchedCustomers.json();
         setCustomers(customersData);
     };
 
     const getVehicles = async () => {
-        const fetchedVehicles = await fetchVehicles();
+        const fetchedVehicles = await fetchVehicles(state.userToken);
         const vehiclesData = await fetchedVehicles.json();
         setVehicles(vehiclesData);
     };
@@ -276,10 +335,9 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
 
 
     const getTaxes = async () => {
-        const fetchedTaxes = await fetchTaxes();
+        const fetchedTaxes = await fetchTaxes(state.userToken);
         const taxesData = await fetchedTaxes.json();
         setTaxes(taxesData);
-
     };
 
     const handleTaxChange = (taxId) => {
@@ -291,10 +349,12 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
     };
 
     useEffect(() => {
-        const foundtax = taxes.find(
-            (tax) => tax.default === true
-        );
-        setSelectedTax(foundtax);
+        if (taxes.length !== 0) {
+            const foundtax = taxes.find(
+                (tax) => tax.default === true
+            );
+            setSelectedTax(foundtax);
+        }
     }, [taxes]);
 
     const clearForm = (formikProps) => {
@@ -347,7 +407,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
                                 <div className="flex items-center justify-between sticky bg-gradient-to-br from-gray-800 to-gray-700">
                                     <div></div>
                                     <div className="text-white text-center text-lg">
-                                        {edit ? "EDIT INVOICE" : "NEW INVOICE"}
+                                        {edit ? "EDIT QUOTATION" : "NEW QUOTATION"}
                                     </div>
                                     <button
                                         className=" bg-transparent hover:bg-gray-800 text-white font-bold py-2 px-4 rounded"
@@ -371,8 +431,8 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
                                     </button>
                                 </div>
 
-                                <div className="overflow-y-auto h-[80vh]">
-                                    <div className="grid grid-cols-3 gap-4">
+                                <div className="overflow-y-auto h-[80vh] overflow-x-hidden">
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="p-2 font-bold">Customer</label> <br />
                                             <select
@@ -489,6 +549,29 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
                                                     type="date"
                                                 />
                                             </div> */}
+                                            {state.userInfo.role === 'super_admin' && (
+                                                <div className="mt-5">
+                                                    <label className="p-2 font-bold">Select Business</label> <br />
+                                                    <select
+                                                        className="w-48 p-2 border border-gray-300 bg-inherit rounded-md"
+                                                        label="Select Business"
+                                                        animate={{
+                                                            mount: { y: 0 },
+                                                            unmount: { y: 25 },
+                                                        }}
+                                                        value={business}
+                                                        onChange={(e) =>
+                                                            setBusiness(e.target.value)
+                                                        }
+                                                        size="md"
+                                                    >
+                                                        {businesses ?
+                                                            businesses.map((business) => (
+                                                                <option key={business.id} value={business.id}>{business.name}, {business.location}</option>
+                                                            )) : []}
+                                                    </select>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -562,7 +645,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
                                                                     type="checkbox"
                                                                     checked={item.taxable}
                                                                     readOnly
-                                                                    // onChange={(e) => handleTaxableChange(index, e.target.checked)}
+                                                                // onChange={(e) => handleTaxableChange(index, e.target.checked)}
                                                                 />
                                                             </td>
                                                             <td className="p-4 border-b border-blue-gray-50">
@@ -613,7 +696,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
                                                     handleTaxChange(e.target.value)
                                                 }
                                             >
-
+                                                <option value="">Select tax</option>
                                                 {taxes.map((tax) => (
                                                     <option
                                                         key={tax.id}

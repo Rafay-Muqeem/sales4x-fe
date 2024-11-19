@@ -19,6 +19,9 @@ import { fetchVehicles } from "@/services/fetchVehicles";
 import { updateInvoice } from "@/services/updateInvoice";
 import PrintView from "./printView";
 import ReactToPrint from "react-to-print";
+import { toast } from "react-toastify";
+import { State } from "@/state/Context";
+import { fetchBusiness } from "@/services/fetchBusiness";
 
 const TABLE_HEAD = [
   "Product",
@@ -37,7 +40,7 @@ const schema = Yup.object().shape({
 
 const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSelectedInvoice }) => {
   const componentRef = useRef();
-
+  const { state } = State();
   const [customers, setCustomers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -55,6 +58,20 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
   const [invoiceId, setInvoiceId] = useState('');
   const [edit, setEdit] = useState(false);
   const [printInvoice, setPrintInvoice] = useState([]);
+  const [businesses, setBusinesses] = useState([]);
+  const [business, setBusiness] = useState(null);
+
+  const showToastMessage = (type, message) => {
+    if (type === 'success') {
+      toast.success(message)
+    }
+    else if (type === 'info') {
+      toast.info(message)
+    }
+    else {
+      toast.error(message)
+    }
+  };
 
   const handleClose = () => {
     setSelectedCustomer(null)
@@ -68,15 +85,31 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
     }]);
     clearForm(formikProps);
     setEdit(false)
+    setBusiness(null);
     close();
   };
 
+  const getBusinesses = async () => {
+    try {
+      const res = await fetchBusiness(state.userToken);
+      const businesses = await res.json();
+      setBusiness(businesses[0].id)
+      setBusinesses(businesses)
+    } catch (error) {
+      toast.error("Something went wrong")
+    }
+  }
+
   useEffect(() => {
+    getBusinesses();
     getProducts();
     getCustomers();
     getVehicles();
     getTaxes();
 
+  }, []);
+
+  useEffect(() => {
     if (selectedInvoice) {
       setPrintInvoice(selectedInvoice);
 
@@ -86,6 +119,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
       setProducts(selectedInvoice.Product)
       setValues({ ...values, ['customer']: selectedInvoice.CustomerId, ['vehicle']: selectedInvoice.VehicleId, ['paymentMethod']: selectedInvoice.paymentMethod })
       setEdit(true)
+      setBusiness(selectedInvoice.BusinessId);
 
       let selectedProd = [...selectedProducts]
       selectedInvoice.Product.forEach((prod) => {
@@ -104,10 +138,11 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
       setSelectedInvoice(null)
     }
 
-  }, [selectedInvoice]);
+    console.log(selectedCustomer)
+  }, [selectedInvoice])
 
   const onSubmit = async (values) => {
-    console.log(selectedProducts);
+
     const selectedProductIds = selectedProducts.map((product) => `${product.id}:${product.quantity}`);
     selectedProductIds.pop();
 
@@ -117,25 +152,56 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
         paymentMethod: values.paymentMethod,
         paymentStatus: "Paid",
         CustomerId: selectedCustomer.id,
-        VehicleId: selectedVehicle.id
+        VehicleId: selectedVehicle.id,
+        BusinessId: null
       },
       "products": selectedProductIds,
     };
 
-    if (edit) {
-      const res = await updateInvoice(invoiceId, data)
+    let updatedData = {};
+    if (state.userInfo.role === 'super_admin') {
+      updatedData = { ...data, invoiceData: { ...data.invoiceData, BusinessId: business } };
     }
     else {
-      const res = await addInvoice(data)
+      updatedData = { ...data, invoiceData: { ...data.invoiceData, BusinessId: state.business.id } };
+    }
+
+    if (edit) {
+      const res = await updateInvoice(invoiceId, updatedData, state.userToken)
+      const invoice = await res.json();
+      if (res.status === 200) {
+        showToastMessage('success', invoice.message)
+      }
+      else if (res.status === 404) {
+        showToastMessage('info', invoice.message)
+      }
+      else if (res.status === 409) {
+        showToastMessage('error', invoice.message)
+      }
+    }
+    else {
+      const res = await addInvoice(updatedData, state.userToken)
+      const invoice = await res.json();
+      if (res.status === 200) {
+        showToastMessage('success', invoice.message)
+      }
+      else if (res.status === 409) {
+        showToastMessage('error', invoice.message)
+      }
     }
     setRefresh(!refresh);
     handleClose();
   };
 
   const getProducts = async () => {
-    const fetchedProducts = await fetchProducts();
-    const productsData = await fetchedProducts.json();
-    setProducts(productsData);
+    try {
+      const fetchedProducts = await fetchProducts(state.userToken);
+      const productsData = await fetchedProducts.json();
+      setProducts(productsData);
+    } catch (error) {
+      console.log(error.message);
+      showToastMessage('error', 'Something went wrong');
+    }
   };
 
   const handleProductChange = async (index, quantity, selectedProId) => {
@@ -143,7 +209,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
     updatedItems[index].product = selectedProId; // Assign the selected product's ID to product
 
     const existingProductIndex = selectedProducts.findIndex(prod => prod.id === selectedProId);
-    console.log(existingProductIndex);
+
     if (existingProductIndex !== -1) {
       const updatedItems = [...selectedProducts];
       updatedItems[existingProductIndex].quantity += quantity;
@@ -156,7 +222,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
         (product) => product.id === selectedProId
       );
 
-      console.log(selectedProductDetails);
       if (selectedProductDetails) {
         updatedItems[index].id = selectedProductDetails.id; // Assign the selected product's ID
         updatedItems[index].name = selectedProductDetails.name;
@@ -193,7 +258,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
 
   const handleQuantityChange = (index, quantity) => {
     const updatedItems = [...selectedProducts];
-    updatedItems[index].quantity = quantity;
+    updatedItems[index].quantity = Number(quantity);
     setSelectedProducts(updatedItems);
   };
 
@@ -216,13 +281,13 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
   };
 
   const getCustomers = async () => {
-    const fetchedCustomers = await fetchCustomers();
+    const fetchedCustomers = await fetchCustomers(state.userToken);
     const customersData = await fetchedCustomers.json();
     setCustomers(customersData);
   };
 
   const getVehicles = async () => {
-    const fetchedVehicles = await fetchVehicles();
+    const fetchedVehicles = await fetchVehicles(state.userToken);
     const vehiclesData = await fetchedVehicles.json();
     setVehicles(vehiclesData);
   };
@@ -269,7 +334,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
   };
 
   const calculateTotalAmountWithTax = () => {
-
     return totalAmount + calculateTaxAmount();;
   };
   useEffect(() => {
@@ -279,9 +343,14 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
 
 
   const getTaxes = async () => {
-    const fetchedTaxes = await fetchTaxes();
-    const taxesData = await fetchedTaxes.json();
-    setTaxes(taxesData);
+    try {
+      const fetchedTaxes = await fetchTaxes(state.userToken);
+      const taxesData = await fetchedTaxes.json();
+      setTaxes(taxesData);
+    } catch (error) {
+      console.log(error);
+      toast.error("Something went wrong")
+    }
 
   };
 
@@ -294,10 +363,12 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
   };
 
   useEffect(() => {
+    if (taxes.length !== 0) {
       const foundtax = taxes.find(
         (tax) => tax.default === true
       );
       setSelectedTax(foundtax);
+    }
   }, [taxes]);
 
   const clearForm = (formikProps) => {
@@ -376,14 +447,14 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                   </button>
                 </div>
 
-                <div className="overflow-y-auto h-[80vh]">
-                  <div className="grid grid-cols-3 gap-4">
+                <div className="overflow-y-auto h-[80vh] overflow-x-hidden p-2">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="p-2 font-bold">Customer</label> <br />
                       <select
                         id="customer"
                         name="customer"
-                        className="w-48 lg:w-72 m-2 p-2 border border-gray-300 bg-inherit rounded-md"
+                        className="w-48 lg:w-80 m-2 p-2 border border-gray-300 bg-inherit rounded-md"
                         value={values.customer}
                         onChange={(e) =>
                           handleCustomerChange(e.target.value)
@@ -469,12 +540,12 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                       <div>
                         <label className="p-2 font-bold">Address</label> <br />
 
-                        <input
-                          className="w-48 lg:w-96 m-2 p-2 border border-gray-300 rounded-md text-black"
+                        <textarea
+                          className="w-48 lg:w-80 m-2 p-2 border border-gray-300 rounded-md text-black"
                           id="address"
                           name="address"
                           type="text"
-                          value={selectedCustomer ? selectedCustomer.address : ''}
+                          value={selectedCustomer ? `${selectedCustomer.Address.street}, ${selectedCustomer.Address.city}` : ''}
                           disabled
                         />
                       </div>
@@ -514,13 +585,37 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                             {errors.paymentMethod}
                           </div>
                         ) : (<div></div>)}
+
+                        {state.userInfo.role === 'super_admin' && (
+                          <div>
+                            <label className="p-2 font-bold">Select Business</label> <br />
+                            <select
+                              className="w-48 p-2 border border-gray-300 bg-inherit rounded-md"
+                              label="Select Business"
+                              animate={{
+                                mount: { y: 0 },
+                                unmount: { y: 25 },
+                              }}
+                              value={business}
+                              onChange={(e) =>
+                                setBusiness(e.target.value)
+                              }
+                              size="md"
+                            >
+                              {businesses ?
+                                businesses.map((business) => (
+                                  <option key={business.id} value={business.id}>{business.name}, {business.location}</option>
+                                )) : []}
+                            </select>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   <Card className=" w-full">
                     <CardBody className="p-2">
-                      <table className="w-full min-w-max table-auto text-left">
+                      <table className="w-full min-w-max table-auto text-left ">
                         <thead>
                           <tr>
                             {TABLE_HEAD.map((head) => (
@@ -588,7 +683,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                                   type="checkbox"
                                   checked={item.taxable}
                                   readOnly
-                                  // onChange={(e) => handleTaxableChange(index, e.target.checked)}
+                                onChange={(e) => handleTaxableChange(index, e.target.checked)}
                                 />
                               </td>
                               <td className="p-4 border-b border-blue-gray-50">

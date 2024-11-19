@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { PencilSquareIcon, ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { format, parseISO, isSameDay } from 'date-fns';
 import MyPopUpForm from './form';
 import { fetchAppointments } from '@/services/fetchAppointments';
-import { Card, CardHeader, CardBody, Typography, Button, Tooltip, IconButton } from '@material-tailwind/react';
+import { Card, CardHeader, CardBody, Typography, Button, Tooltip, IconButton, Spinner } from '@material-tailwind/react';
+import { State } from '@/state/Context';
+import { toast } from "react-toastify";
+import { delAppointment } from '@/services/delAppointment';
 
 export function Appointments() {
 
+    const { state } = State();
     const [open, setOpen] = useState(false);
     const [refresh, setRefresh] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
@@ -15,6 +19,7 @@ export function Appointments() {
     const [monthDays, setMonthDays] = useState(0);
     const [firstDay, setFirstDay] = useState(0);
     const [loopTotal, setLoopTotal] = useState(0);
+    const [loading, setLoading] = useState(true);
 
     const currentDate = new Date();
     const [currentYear, setCurrentYear] = useState(currentDate.getFullYear());
@@ -23,6 +28,19 @@ export function Appointments() {
     let weekDaysList = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     let monthList = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    const showToastMessage = (type, message) => {
+
+        if (type === 'success') {
+            toast.success(message)
+        }
+        else if (type === 'info') {
+            toast.info(message)
+        }
+        else {
+            toast.error(message)
+        }
+    };
 
     useEffect(() => {
         if (currentMonth > 0 && currentMonth <= 12) {
@@ -63,15 +81,60 @@ export function Appointments() {
     }, [refresh])
 
     const getAppointments = async () => {
-        const appointments = await fetchAppointments();
-        setAppointments(await appointments.json());
+        try {
+            const res = await fetchAppointments(state.userToken);
+            const appointments = await res.json();
+            setAppointments(appointments);
+            setLoading(false);
+        } catch (error) {
+            console.log(error);
+            showToastMessage('error', 'Something went wrong')
+        }
     }
 
-    const handleOpen = () => setOpen(!open);
+    const handleOpen = () => {
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_ADD_APPOINTMENT" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            setOpen(!open);
+        }
+        else {
+            toast.error("You are not allowed to create an appointment");
+        }
+    }
 
     const handleEdit = (data) => {
-        setSelectedItem(data)
-        handleOpen()
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_EDIT_APPOINTMENT" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            setSelectedItem(data)
+            handleOpen()
+        }
+        else {
+            toast.error("You are not allowed to update an appointment");
+        }
+    }
+
+    async function handleDel(id) {
+        if (state.userInfo.Permission.some(obj => obj.name === "CAN_DELETE_APPOINTMENT" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+            try {
+                const res = await delAppointment(id, state.userToken);
+                const appointment = await res.json();
+                if (res.status === 200) {
+                    showToastMessage('success', appointment.message)
+                }
+                else if (res.status === 404) {
+                    showToastMessage('info', appointment.message)
+                }
+                else if (res.status === 500) {
+                    showToastMessage('error', "Something went wrong");
+                }
+                setRefresh(!refresh)
+            } catch (error) {
+                console.log(error);
+                showToastMessage('error', "Something went wrong");
+            }
+        }
+        else {
+            toast.error("You are not allowed to delete an appointment");
+        }
+
     }
 
     const renderAppointmentsForDate = (date) => {
@@ -80,13 +143,19 @@ export function Appointments() {
         );
 
         return filteredAppointments.map((appointment, index) => (
-            <div onClick={() => handleEdit(appointment)} key={index} className="mt-1 px-1 flex text-white text-sm bg-blue-600 rounded-md cursor-pointer">
-                <div className='mr-1 w-min'>{format(parseISO(appointment.startDateTime), 'HH:mm')}</div>
-                <span>{appointment.customerName.split(' ')[0]}</span>
+            <div key={index} className="mt-1 px-1 flex justify-center bg-blue-600 rounded-md">
+                <div className='text-white text-sm cursor-pointer' onClick={() => handleEdit(appointment)}>
+                    <div className='mr-1 w-min'>{format(parseISO(appointment.startDateTime), 'HH:mm')}</div>
+                    <span>{appointment.customerName.split(' ')[0]}</span>
+                </div>
+                <XMarkIcon onClick={() => handleDel(appointment.id)} className="h-4 w-4 text-white mb-auto ml-auto cursor-pointer" />
             </div>
         ));
     };
 
+    if (loading) {
+        return <Spinner className="mx-auto mt-[30vh] h-10 w-10 text-gray-900/50" />
+    }
     return (
         <Card className="h-full w-full ">
             <CardHeader floated={false} shadow={false} className="rounded-none">
@@ -137,14 +206,14 @@ export function Appointments() {
                             return (
                                 <div key={i} className="p-1 border border-gray-300 h-28 max-h-44">
                                     {i >= firstDay && i < firstDay + monthDays ?
-                                    <>
-                                        <div className=''>{i - (firstDay - 1)}</div>
-                                        <div className="mt-1">
-                                            {renderAppointmentsForDate(format(new Date(currentYear, currentMonth, 0).setDate(i - (firstDay-1)), 'yyyy-MM-dd'))}
-                                        </div>
-                                    </>
-                                    :
-                                    ''
+                                        <>
+                                            <div className=''>{i - (firstDay - 1)}</div>
+                                            <div className="mt-1">
+                                                {renderAppointmentsForDate(format(new Date(currentYear, currentMonth, 0).setDate(i - (firstDay - 1)), 'yyyy-MM-dd'))}
+                                            </div>
+                                        </>
+                                        :
+                                        ''
                                     }
                                 </div>
                             );

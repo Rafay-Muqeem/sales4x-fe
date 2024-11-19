@@ -17,6 +17,16 @@ export const Reducer = (state, action) => {
                 ...state,
                 userToken: action.payload
             })
+        case 'SET_BUSINESS':
+            return ({
+                ...state,
+                business: action.payload
+            })
+        case 'SET_USER':
+            return ({
+                ...state,
+                userInfo: action.payload,
+            })
         case 'RESET':
             return ({
                 Settings: {
@@ -25,6 +35,8 @@ export const Reducer = (state, action) => {
                     },
                 },
                 userToken: '',
+                business: '',
+                userInfo: {}
             })
         default:
             return state

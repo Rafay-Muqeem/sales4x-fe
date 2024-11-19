@@ -1,7 +1,10 @@
-export async function fetchBusiness(){
+export async function fetchBusiness(token){
     try {
-        const businesses = await fetch("https://solutions4x.com/api/business/", {
+        const businesses = await fetch("http://localhost:5000/api/business/", {
             method: "GET",
+            headers: {
+                "auth-token": token
+            }
         })
        
         return businesses;

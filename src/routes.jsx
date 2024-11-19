@@ -1,4 +1,5 @@
 import {
+  HomeIcon,
   Cog8ToothIcon,
   DocumentTextIcon,
   WrenchIcon,
@@ -8,7 +9,7 @@ import {
   PencilSquareIcon,
   TruckIcon,
 } from "@heroicons/react/24/solid";
-import { Customers, Invoice, Quotation, Product, Tables, Inspection, Appointments, Settings, Vehicles } from "@/pages/dashboard";
+import { Home, Customers, Invoice, Quotation, Product, Inspection, Appointments, Settings, Vehicles, Reports } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
 
 const icon = {
@@ -19,6 +20,12 @@ export const routes = [
   {
     layout: "dashboard",
     pages: [
+      {
+        icon: <HomeIcon {...icon} />,
+        name: "dashboard",
+        path: "/home",
+        element: <Home />,
+      },
       {
         icon: <UserGroupIcon {...icon} />,
         name: "Customers",
@@ -64,8 +71,8 @@ export const routes = [
       {
         icon: <ChartBarIcon {...icon} />,
         name: "Reports",
-        path: "/tables",
-        element: <Tables />,
+        path: "/reports",
+        element: <Reports />,
       },
       {
         icon: <Cog8ToothIcon {...icon} />,

@@ -9,6 +9,7 @@ import {
   CardFooter,
   IconButton,
   Tooltip,
+  Spinner,
 } from "@material-tailwind/react";
 import { DocumentTextIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
@@ -17,6 +18,7 @@ import { fetchInvoices } from "@/services/fetchInvoices";
 import { delInvoice } from "@/services/delInvoice";
 import { Link } from "react-router-dom";
 import { State } from "../../state/Context";
+import { toast } from "react-toastify";
 
 const TABLE_HEAD = ["Customer", "Status", "Payment Method", "Total", "Invoice Date", "Vehicle", "Actions"];
 
@@ -30,37 +32,77 @@ export function Invoice() {
   const [refresh, setRefresh] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const showToastMessage = (type, message) => {
+    if (type === 'success') {
+      toast.success(message)
+    }
+    else if (type === 'info') {
+      toast.info(message)
+    }
+    else {
+      toast.error(message)
+    }
+  };
 
   useEffect(() => {
     getInvoices();
   }, [refresh]);
 
   const getInvoices = async () => {
-    const fetchedInvoices = await fetchInvoices();
-    const totalInvoices = await fetchedInvoices.json();
-    if (state.Settings.General.invoice === 'all') {
-      setInvoices(totalInvoices);
-    }
-    else if (state.Settings.General.invoice === 'current') {
-      setInvoices(totalInvoices.filter(invoice => invoice.current === true))
+    try {
+      const fetchedInvoices = await fetchInvoices(state.userToken);
+      const totalInvoices = await fetchedInvoices.json();
+      
+      if (state.Settings.General.invoice === 'all') {
+        setInvoices(totalInvoices);
+      }
+      else if (state.Settings.General.invoice === 'current') {
+        setInvoices(totalInvoices.filter(invoice => invoice.current === true))
+      }
+      setLoading(false);
+
+    } catch (error) {
+      console.log(error.message);
+      showToastMessage('error', "Something went wrong");
     }
   };
 
   const handleEditInvoice = (index) => {
     // Assuming currentItems holds the filtered rows for display
-    const selected = currentItems[index];
-    setSelectedInvoice(selected);
+    if (state.userInfo.Permission.some(obj => obj.name === "CAN_EDIT_INVOICE" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+      const selected = currentItems[index];
+      setSelectedInvoice(selected);
+      openPopup();
+    }
+    else {
+      toast.error("You are not allowed to update an invoice");
+    }
   };
 
   const handleDeleteInvoice = async (index) => {
-    const updatedInvoices = invoices.filter((_, rowIndex) => rowIndex !== index);
-    const deletedInvoiceId = invoices.find((_, rowIndex) => rowIndex === index);
-    setInvoices(updatedInvoices);
-    try {
-      const res = await delInvoice(deletedInvoiceId['id']);
-      setRefresh(!refresh);
-    } catch (error) {
-      console.log(error)
+    if (state.userInfo.Permission.some(obj => obj.name === "CAN_DELETE_INVOICE" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+      const updatedInvoices = invoices.filter((_, rowIndex) => rowIndex !== index);
+      const deletedInvoiceId = invoices.find((_, rowIndex) => rowIndex === index);
+      setInvoices(updatedInvoices);
+      try {
+        const res = await delInvoice(deletedInvoiceId['id'], state.userToken);
+        const invoice = await res.json();
+        if (res.status === 200) {
+          showToastMessage('success', invoice.message)
+        }
+        else if (res.status === 404) {
+          showToastMessage('info', invoice.message)
+        }
+        setRefresh(!refresh);
+      } catch (error) {
+        console.log(error)
+        showToastMessage('error', "Something went wrong");
+      }
+    }
+    else {
+      toast.error("You are not allowed to delete an invoice");
     }
   };
 
@@ -94,13 +136,21 @@ export function Invoice() {
   };
 
   const openPopup = () => {
-    setIsOpen(true);
+    if (state.userInfo.Permission.some(obj => obj.name === "CAN_CREATE_INVOICE" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+      setIsOpen(true);
+    }
+    else {
+      toast.error("You are not allowed to add an invoice");
+    }
   };
 
   const closePopup = () => {
     setIsOpen(false);
   };
 
+  if (loading) {
+    return <Spinner className="mx-auto mt-[30vh] h-10 w-10 text-gray-900/50" />
+  }
   return (
     <>
       <Card className="h-full w-full ">
@@ -164,10 +214,24 @@ export function Invoice() {
                     </Typography>
                   </th>
                 ))}
+                {state.userInfo.role === 'super_admin' && (
+                  <th
+                    key={'BUSINESS'}
+                    className="border-y border-blue-gray-100 bg-blue-gray-50/50 p-4"
+                  >
+                    <Typography
+                      variant="small"
+                      color="blue-gray"
+                      className="font-normal leading-none opacity-70"
+                    >
+                      BUSINESS
+                    </Typography>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
-              {currentItems.map(({ id, Customer, paymentStatus, paymentMethod, totalAmount, createdAt, Vehicle }, index) => {
+              {currentItems.map(({ id, Customer, paymentStatus, paymentMethod, totalAmount, createdAt, Vehicle, Business }, index) => {
                 const isLast = index === currentItems.length - 1;
                 const classes = isLast
                   ? "p-4"
@@ -180,7 +244,6 @@ export function Invoice() {
                         className="text-blue-gray font-normal hover:underline"
                         onClick={() => {
                           handleEditInvoice(index);
-                          openPopup();
                         }}
                       >
                         {Customer['firstName']} {Customer['lastName']}
@@ -244,6 +307,17 @@ export function Invoice() {
                         </IconButton>
                       </Tooltip>
                     </td>
+                    {state.userInfo.role === 'super_admin' && (
+                      <td className={classes}>
+                        <Typography
+                          variant="small"
+                          color="blue-gray"
+                          className="font-normal opacity-70"
+                        >
+                          {Business.name}
+                        </Typography>
+                      </td>
+                    )}
                   </tr>
                 );
               },
