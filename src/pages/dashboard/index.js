@@ -1,5 +1,5 @@
 export * from "@/pages/customer/table";
-export * from "@/pages/settings/settings";
+export * from "@/pages/settings";
 export * from "@/pages/invoice/table";
 export * from "@/pages/quotation/table";
 export * from "@/pages/appointments/appointments";
