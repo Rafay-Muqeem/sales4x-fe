@@ -7,7 +7,7 @@ import { addCustomer } from "@/services/addCustomer";
 import { updateCustomer } from "@/services/updateCustomer";
 import { toast } from "react-toastify";
 import { State } from "@/state/Context";
-import { fetchBusiness } from "@/services/fetchBusiness";
+import { fetchBusinesses } from "@/services/fetchBusinesses";
 import { addAddress } from "@/services/addAddress";
 import { updateAddress } from "@/services/updateAddress";
 
@@ -57,7 +57,7 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
 
   const getBusinesses = async () => {
     try {
-      const res = await fetchBusiness(state.userToken);
+      const res = await fetchBusinesses(state.userToken);
       const businesses = await res.json();
 
       setBusiness(businesses[0].id)

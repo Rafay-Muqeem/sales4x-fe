@@ -6,7 +6,7 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { State } from "@/state/Context";
 import { toast } from "react-toastify";
-import { fetchBusiness } from "@/services/fetchBusiness";
+import { fetchBusinesses } from "@/services/fetchBusinesses";
 
 const schema = Yup.object().shape({
     customerName: Yup.string().required("Customer name is required"),
@@ -58,7 +58,7 @@ function AppointmentForm({ selectedItem, setSelectedItem, open, handleOpen, refr
 
     const getBusinesses = async () => {
         try {
-            const res = await fetchBusiness(state.userToken);
+            const res = await fetchBusinesses(state.userToken);
             const businesses = await res.json();
             setBusinesses(businesses)
         } catch (error) {

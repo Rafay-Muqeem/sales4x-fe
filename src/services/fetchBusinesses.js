@@ -1,13 +1,13 @@
-export async function fetchBusiness(id, token){
+export async function fetchBusinesses(token){
     try {
-        const business = await fetch(`http://localhost:5000/api/business/${id}`, {
+        const businesses = await fetch("http://localhost:5000/api/business/", {
             method: "GET",
             headers: {
                 "auth-token": token
             }
         })
        
-        return business;
+        return businesses;
 
     } catch (error) {
         console.log(error);

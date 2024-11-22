@@ -6,7 +6,7 @@ import { Card } from "@material-tailwind/react";
 import UserForm from "./userForm";
 import { fetchUsers } from "@/services/fetchUsers";
 import { delUser } from "@/services/delUser";
-import { fetchBusiness } from "@/services/fetchBusiness";
+import { fetchBusinesses } from "@/services/fetchBusinesses";
 import { fetchPermissions } from "@/services/fetchPermissions";
 import { toast } from "react-toastify";
 import { State } from "@/state/Context";
@@ -42,7 +42,7 @@ function Users() {
 
   const getBusinesses = async () => {
     try {
-      const res = await fetchBusiness(state.userToken);
+      const res = await fetchBusinesses(state.userToken);
       const businesses = await res.json();      
       setBusinesses(businesses)
     } catch (error) {

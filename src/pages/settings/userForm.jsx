@@ -12,7 +12,7 @@ import { addUser } from "@/services/addUser";
 import { updateUser } from "@/services/updateUser";
 import { State } from "@/state/Context";
 import { toast } from "react-toastify";
-import { fetchBusiness } from "@/services/fetchBusiness";
+import { fetchBusinesses } from "@/services/fetchBusinesses";
 
 function UserForm({ permissions, userData, setUserData, open, handleOpen, refresh, setRefresh }) {
     
@@ -41,7 +41,7 @@ function UserForm({ permissions, userData, setUserData, open, handleOpen, refres
 
     const getBusinesses = async () => {
         try {
-            const res = await fetchBusiness(state.userToken);
+            const res = await fetchBusinesses(state.userToken);
             const businesses = await res.json();
             console.log(businesses);
 

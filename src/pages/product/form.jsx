@@ -161,7 +161,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
       values: {
         name: "",
         cost: "",
-        margin: 10,
+        margin: state.business.defaultMargin || 10,
         price: "",
         itemCode: "",
         type: "",
@@ -172,7 +172,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
       errors: {
         name: "",
         cost: "",
-        margin: 10,
+        margin: state.business.defaultMargin || 10,
         price: "",
         itemCode: "",
         type: "",
@@ -187,7 +187,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedItem, setSelect
     initialValues: {
       name: "",
       cost: "",
-      margin: 10,
+      margin: state.business.defaultMargin || 10,
       price: "",
       itemCode: "",
       type: "",

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Input, Select, Button, Option } from "@material-tailwind/react";
 import { State } from '../../state/Context'
+import { updateBusiness } from "@/services/updateBusiness";
+import { toast } from "react-toastify";
 
 function Profile() {
     const { state, dispatch } = State();
@@ -19,6 +21,18 @@ function Profile() {
         permitNumber: "",
     });
 
+    const showToastMessage = (type, message) => {
+        if (type === 'success') {
+            toast.success(message)
+        }
+        else if (type === 'info') {
+            toast.info(message)
+        }
+        else {
+            toast.error(message)
+        }
+    };
+
     const invoiceOptions = [
         { value: 'current', label: 'current' },
         { value: 'all', label: 'all' },
@@ -32,30 +46,23 @@ function Profile() {
         });
     };
 
-    const handleSave = (formType) => {
-        console.log(`${formType} Data Saved:`, formData);
+    const handleSave = async () => {
+        const res = await updateBusiness(state.business.id, formData, state.userToken);
+        setFormData(res.data)
+        dispatch({ type: 'SET_BUSINESS', payload: res.data });
+        showToastMessage('success', 'Business Details Updated Successfully');
     };
 
+    // for invoice setting!!
     const handleSaveClick = async () => {
         dispatch({ type: 'SET_INVOICE', payload: invoice });
     }
 
     useEffect(() => {
-        setFormData({
-            name: state.business.name,
-            logo: state.business.logo,
-            defaultMargin: state.business.defaultMargin,
-            address: state.business.address,
-            city: state.business.city,
-            state: state.business.state,
-            zipCode: state.business.zipCode,
-            tel: state.business.tel,
-            fax: state.business.fax,
-            licenseNumber: state.business.licenseNumber,
-            permitNumber: state.business.permitNumber,
-        });
+        setFormData(state.business);
     }, [])
 
+    // for invoice setting!!
     // useEffect(() => {
     //     console.log(state);
     // }, [state.Settings])
@@ -87,21 +94,21 @@ function Profile() {
                         label="Name"
                         type="text"
                         name="name"
-                        value={formData.name}
+                        value={formData?.name}
                         onChange={handleChange}
                     />
                     <Input
                         label="License Number"
                         type="text"
                         name="licenseNumber"
-                        value={formData.licenseNumber}
+                        value={formData?.licenseNumber}
                         onChange={handleChange}
                     />
                     <Input
                         label="Permit Number"
                         type="text"
                         name="permitNumber"
-                        value={formData.permitNumber}
+                        value={formData?.permitNumber}
                         onChange={handleChange}
                     />
                     <Input
@@ -114,13 +121,13 @@ function Profile() {
                         label="Default Margin"
                         type="number"
                         name="defaultMargin"
-                        value={formData.defaultMargin}
+                        value={formData?.defaultMargin}
                         onChange={handleChange}
                     />
                 </div>
                 <Button
                     className="mt-4 px-6 py-3 text-white rounded float-right"
-                    onClick={() => handleSave("Other")}
+                    onClick={() => handleSave()}
                 >
                     Save
                 </Button>
@@ -134,34 +141,34 @@ function Profile() {
                         label="Address"
                         type="text"
                         name="address"
-                        value={formData.address}
+                        value={formData?.address}
                         onChange={handleChange}
                     />
                     <Input
                         label="City"
                         type="text"
                         name="city"
-                        value={formData.city}
+                        value={formData?.city}
                         onChange={handleChange}
                     />
                     <Input
                         label="State"
                         type="text"
                         name="state"
-                        value={formData.state}
+                        value={formData?.state}
                         onChange={handleChange}
                     />
                     <Input
                         label="Zip Code"
                         type="text"
                         name="zipcode"
-                        value={formData.zipcode}
+                        value={formData?.zipcode}
                         onChange={handleChange}
                     />
                 </div>
                 <Button
                     className="mt-4 px-6 py-3 text-white rounded float-right"
-                    onClick={() => handleSave("Address")}
+                    onClick={() => handleSave()}
                 >
                     Save
                 </Button>
@@ -174,20 +181,20 @@ function Profile() {
                         label="Telephone"
                         type="tel"
                         name="tel"
-                        value={formData.tel}
+                        value={formData?.tel}
                         onChange={handleChange}
                     />
                     <Input
                         label="Fax"
                         type="tel"
                         name="fax"
-                        value={formData.fax}
+                        value={formData?.fax}
                         onChange={handleChange}
                     />
                 </div>
                 <Button
                     className="mt-4 px-6 py-3 text-white rounded float-right"
-                    onClick={() => handleSave("Phone")}
+                    onClick={() => handleSave()}
                 >
                     Save
                 </Button>

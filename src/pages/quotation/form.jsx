@@ -21,7 +21,7 @@ import { addQuotaion } from "@/services/addQuotation";
 import PrintView from "./printView";
 import { toast } from "react-toastify";
 import { State } from "@/state/Context";
-import { fetchBusiness } from "@/services/fetchBusiness";
+import { fetchBusinesses } from "@/services/fetchBusinesses";
 
 const TABLE_HEAD = [
     "Product",
@@ -75,7 +75,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedQuotation, setS
 
     const getBusinesses = async () => {
         try {
-            const res = await fetchBusiness(state.userToken);
+            const res = await fetchBusinesses(state.userToken);
             const businesses = await res.json();
             setBusiness(businesses[0].id)
             setBusinesses(businesses)
