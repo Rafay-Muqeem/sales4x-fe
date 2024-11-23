@@ -5,7 +5,7 @@ import {
   DashboardNavbar,
   Footer,
 } from "@/widgets/layout";
-import {StatisticsChart} from "@/widgets/charts";
+import { StatisticsChart } from "@/widgets/charts";
 import { Spinner } from "@material-tailwind/react";
 import routes from "@/routes";
 import { useMaterialTailwindController } from "@/context";
@@ -88,10 +88,10 @@ export function Dashboard() {
       <div className="min-h-screen">
         <Sidenav
           routes={routes}
-          // brandImg={
-          //   sidenavType === "dark" ? "/img/logo-ct.png" : "/img/logo-ct-dark.png"
-          // }
         />
+        {/* brandImg={
+          sidenavType === "dark" ? "/img/logo-ct.png" : "/img/logo-ct-dark.png"
+        } */}
         {loading ?
           <Spinner className="mx-auto mt-[40vh] h-10 w-10 text-gray-900/50" />
           :

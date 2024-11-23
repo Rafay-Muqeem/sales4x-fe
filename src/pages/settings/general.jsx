@@ -41,34 +41,53 @@ function Profile() {
     ];
 
     const handleChange = (e) => {
-        const { name, value, files } = e.target;
+        let { name, value, files } = e.target;
+        const REQUIRED_WIDTH = 300;
+        const REQUIRED_HEIGHT = 300;
+
+        if (files) {
+            const img = new Image();
+            img.src = URL.createObjectURL(e.target.files[0]);
+
+            img.onload = () => {
+            if (img.width === REQUIRED_WIDTH && img.height === REQUIRED_HEIGHT) {
+                showToastMessage('success', 'Image uploaded successfully');
+            } else {
+                showToastMessage('error', `Invalid dimensions! Please upload an image of ${REQUIRED_WIDTH}x${REQUIRED_HEIGHT}px.`);
+            }
+            URL.revokeObjectURL(img.src)
+            }
+        }
+        if (name === 'defaultMargin' || name === 'zipcode') value = parseInt(value);
         setFormData({
             ...formData,
             [name]: files ? files[0] : value,
-        });        
+        });
     };
 
     const handleSave = async () => {
-        console.log(formData);
-        const businessData = new FormData();
-        const avoidFields = ['updated_at', 'created_at', 'id'];
-        Object.values(formData).forEach((value, index) => {
-            if (value !== null && !avoidFields.includes(Object.keys(formData)[index])) {
-                businessData.append(Object.keys(formData)[index], value);
+        const isUpdated = Object.values(formData).some((value) => !Object.values(state.business).includes(value));
+        if (isUpdated) {
+            const businessData = new FormData();
+            const avoidFields = ['updated_at', 'created_at', 'id'];
+            Object.values(formData).forEach((value, index) => {
+                if (value !== null && !avoidFields.includes(Object.keys(formData)[index])) {
+                    businessData.append(Object.keys(formData)[index], value);
+                }
+            });
+            const res = await updateBusiness(state.business.id, businessData, state.userToken);
+            if (res.status === 200) {
+                const business = await res.json();
+                const { logo, ...rest } = business.data;
+                setBusiensslogo(logo);
+                setFormData(rest);
+                dispatch({ type: 'SET_BUSINESS', payload: business.data });
+                showToastMessage('success', 'Business Details Updated Successfully');
+                setFormData({ lg: null, ...business.data });
+                return;
             }
-        });
-        const res = await updateBusiness(state.business.id, businessData, state.userToken);
-        if (res.status === 200) {
-            const business = await res.json();
-            const { logo, ...rest } = business.data;
-            setBusiensslogo(logo);
-            setFormData(rest);
-            dispatch({ type: 'SET_BUSINESS', payload: business.data });
-            showToastMessage('success', 'Business Details Updated Successfully');
-            setFormData({ lg: null, ...business.data });
-            return;
+            showToastMessage('error', 'Failed to update Business Details');
         }
-        showToastMessage('error', 'Failed to update Business Details');
     };
 
     // for invoice setting!!
@@ -144,7 +163,7 @@ function Profile() {
                         type="file"
                         name="logo"
                         accept="image/*"
-                        onChange={(e) => {handleChange(e); setBusiensslogo(URL.createObjectURL(e.target.files[0]))}}
+                        onChange={(e) => { handleChange(e); setBusiensslogo(URL.createObjectURL(e.target.files[0])) }}
                     />
                     <div className="basis-[50%] max-h-[150px] max-w-[150px] bg-auto bg-center overflow-hidden">
                         <img className="" src={busiensslogo ? busiensslogo : dummyImage} alt="Business logo" width={150} height={150} />

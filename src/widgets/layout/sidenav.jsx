@@ -7,10 +7,12 @@ import {
   Typography,
 } from "@material-tailwind/react";
 import { useMaterialTailwindController, setOpenSidenav } from "@/context";
+import { State } from '../../state/Context'
 
 export function Sidenav({ routes }) {
   const [controller, dispatch] = useMaterialTailwindController();
   const { sidenavColor, sidenavType, openSidenav } = controller;
+  const { state } = State();
 
   return (
     <aside
@@ -20,15 +22,19 @@ export function Sidenav({ routes }) {
       <div
         className={`relative`}
       >
-        <Link to="/" className="py-6 px-8 text-center">
-          <Typography
-            variant="h6"
-            color="white"
+        <div className="flex items-center space-x-2 p-2">
+          <img className="rounded-xl h-[100px] w-[100px]" src={state.business?.logo} alt="Business logo" width={100} height={100} />
+          <Link to="/" className="w-full text-center">
+            <Typography
+              variant="h6"
+              color="white"
+              className="flex flex-col items-start justify-center"
             // color={sidenavType === "dark" ? "white" : "blue-gray"}
-          >
-            Sales4x
-          </Typography>
-        </Link>
+            >
+              <span>Sales4x</span> <span className="text-xs font-normal whitespace-nowrap">({state.business?.name})</span>
+            </Typography>
+          </Link>
+        </div>
         <IconButton
           variant="text"
           color="white"
