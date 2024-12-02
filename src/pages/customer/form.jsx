@@ -10,6 +10,10 @@ import { State } from "@/state/Context";
 import { fetchBusinesses } from "@/services/fetchBusinesses";
 import { addAddress } from "@/services/addAddress";
 import { updateAddress } from "@/services/updateAddress";
+import { PlusCircleIcon } from "@heroicons/react/24/outline";
+import CustomerVehicleForm from "./customerVehicleForm";
+import { fetchCustomerVehicles } from "@/services/fetchCustomerVehicles";
+import { fetchCustomer } from "@/services/fetchCustomer";
 
 const phoneRgex = /^((\+92)?(0092)?(92)?(0)?)(3)([0-9]{9})$/gm;
 
@@ -38,6 +42,23 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
   const [edit, setEdit] = useState(false);
   const [businesses, setBusinesses] = useState([]);
   const [business, setBusiness] = useState(null);
+  const [currentVehicle, setCurrentVehicle] = useState(null);
+
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  const openPopup = () => {
+    if (state.userInfo.Permission.some(obj => obj.name === "IS_CASHIER" || obj.name === "IS_ADMIN" || obj.name === "IS_SUPER_ADMIN")) {
+      setIsOpen(true);
+    }
+    else {
+      toast.error("You are not allowed to add a customer")
+    }
+  };
+
+  const closePopup = () => {
+    setIsOpen(false);
+  };
 
   const showToastMessage = (type, message) => {
     if (type === 'success') {
@@ -59,13 +80,13 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
     try {
       const res = await fetchBusinesses(state.userToken);
       const businesses = await res.json();
-
       setBusiness(businesses[0].id)
       setBusinesses(businesses)
     } catch (error) {
       toast.error("Something went wrong")
     }
   }
+
   const handleClose = () => {
     clearForm(formikProps);
     setEdit(false);
@@ -77,10 +98,20 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
   useEffect(() => {
     if (selectedItem) {
       formikProps.setValues(selectedItem);
+      setCurrentVehicle(selectedItem.Vehicle[0])
       setBusiness(selectedItem.BusinessId);
       setEdit(true);
     }
   }, [selectedItem]);
+
+  const getCustomerDetails = async () => {
+    try {
+      const customer = await (await fetchCustomer(selectedItem.id, state.userToken)).json();
+      setSelectedItem(customer);
+    } catch (error) {
+      console.log(error)
+    }
+  }
 
   // to clean address object
   function removeExtraAddressFields(obj) {
@@ -240,6 +271,7 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
   } = formikProps;
 
   return (
+    <>
     <Dialog open={open}>
       {open && (
         <form onSubmit={handleSubmit} autoComplete="new" >
@@ -281,7 +313,7 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                         name="customerType"
                         value="personal"
                         checked={values.customerType === 'personal'}
-                        onChange={handleChange}
+                        onChange={() => setValues({...values, customerType: 'personal', licenseNo: ''})}
                         className="hidden"
                       />
                       <div
@@ -498,6 +530,38 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                     </div>
                   </div>
                 </div>
+                {edit && (
+                  <div className="mt-4 flex">
+                    <div className="basis-[33.33%]">
+                      <div className="flex items-center">
+                      <label className="p-1 font-bold">Vehicles</label>
+                      <PlusCircleIcon onClick={openPopup} className="h-6 w-6 text-blue-600 cursor-pointer" /> 
+                      </div>
+                      <MyPopUpForm />
+                      <select
+                        className="w-full p-2 border border-gray-300 bg-inherit rounded-md"
+                        label="Select Vehicle"
+                        animate={{
+                          mount: { y: 0 },
+                          unmount: { y: 25 },
+                        }}
+                        value={currentVehicle?.id || ""}
+                        onChange={(e) => {
+                          const selectedVehicle = values.Vehicle.find(
+                            (vehicle) => vehicle.id === e.target.value
+                          );
+                          setCurrentVehicle(selectedVehicle);
+                        }}
+                        size="md"
+                      >
+                        {values.Vehicle ?
+                          values.Vehicle.map((vehicle) => (
+                            <option key={vehicle.id} value={vehicle.id}>{vehicle.make}, {vehicle.model}</option>
+                          )) : []}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="font-bold">Notes</label> <br />
@@ -553,10 +617,10 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
             </div>
           </div>
         </form>
-
-
       )}
     </Dialog>
+    {selectedItem ?  <CustomerVehicleForm open={isOpen} close={closePopup} refresh={refresh} setRefresh={setRefresh} CustomerId={selectedItem?.id} getCustomerDetails={getCustomerDetails} /> : null}
+    </>
   );
 };
 export default MyPopUpForm;

@@ -50,12 +50,12 @@ export const routes = [
         path: "/products",
         element: <Product />,
       },
-      {
-        icon: <TruckIcon {...icon} />,
-        name: "Vehicles",
-        path: "/vehicles",
-        element: <Vehicles />,
-      },
+      // {
+      //   icon: <TruckIcon {...icon} />,
+      //   name: "Vehicles",
+      //   path: "/vehicles",
+      //   element: <Vehicles />,
+      // },
       {
         icon: <PencilSquareIcon {...icon} />,
         name: "Appointments",

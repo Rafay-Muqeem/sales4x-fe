@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Input, Select, Button, Option } from "@material-tailwind/react";
-import { State } from '../../state/Context'
+import { State } from '../../../state/Context'
 import { updateBusiness } from "@/services/updateBusiness";
 import { toast } from "react-toastify";
-import dummyImage from "../../assets/dummyImage.png"
+import dummyImage from "../../../assets/dummyImage.png"
 
 function Profile() {
     const { state, dispatch } = State();

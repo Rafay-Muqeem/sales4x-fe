@@ -3,43 +3,28 @@ import { useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Dialog, Spinner } from "@material-tailwind/react";
-import { addVehicle } from "@/services/addVehicle";
 import { updateVehicle } from "@/services/updateVehicle";
 import { toast } from 'react-toastify';
 import { State } from "@/state/Context";
-import jsonp from "jsonp";
+import { fetchVehicles } from "@/services/fetchVehicles";
+import { addCustomerVehicle } from "@/services/addCustomerVehicle";
 
 const schema = Yup.object().shape({
-    make: Yup.string().required("Make is required"),
-    model: Yup.string().required("Model is required"),
+    year: Yup.number().required("Year is required"),
+    vehicle: Yup.string().required("Vehicle is required"),
+    odometer: Yup.number().required("Odometer is required"),
+    licenseNo: Yup.string().required("license No. is required"),
+    engineSize: Yup.number().required("Engine Size is required"),
+    color: Yup.string(),
+    notes: Yup.string(),
 });
 
-const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setRefresh }) => {
-
-    const Makes = [
-        'Mercedes',
-        'Dodge',
-        'Chevrolet',
-        'BMW',
-        'Audi',
-        'Porche',
-        'Toyota',
-        'Honda',
-        'Ford',
-    ]
-
-    const makeInputRef = useRef(null);
-    const modelInputRef = useRef(null);
+const CustomerVehicleForm = ({ open, close, refresh, setRefresh, CustomerId, getCustomerDetails }) => {
+    const vehicleInputRef = useRef(null);
     const { state } = State();
     const [edit, setEdit] = useState(false);
-    const [makes, setMakes] = useState([]);
-    const [models, setModels] = useState([]);
-    const [filteredMakes, setFilteredMakes] = useState([]);
-    const [filteredModels, setFilteredModels] = useState([]);
-    const [showMakeSuggestions, setShowMakeSuggestions] = useState(false);
-    const [showModelSuggestions, setShowModelSuggestions] = useState(false);
-    const [makeLoading, setMakeLoading] = useState(false);
-    const [modelLoading, setModelLoading] = useState(false);
+    const [vehicles, setVehicles] = useState([]);
+    const [showVehicleSuggestions, setShowVehicleSuggestions] = useState(false);
 
     const showToastMessage = (type, message) => {
         if (type === 'success') {
@@ -53,31 +38,29 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
         }
     };
 
-
     const handleClose = () => {
         clearForm(formikProps);
         setEdit(false);
-        setSelectedItem(null);
-        setMakes([]);
-        setModels([]);
         close();
     };
 
-    useEffect(() => {
-        if (selectedItem) {
-            formikProps.setValues(selectedItem);
-            setEdit(true);
-            console.log(formikProps.values);
-        }
-    }, [selectedItem]);
+    // useEffect(() => {
+    //     if (selectedItem) {
+    //         formikProps.setValues(selectedItem);
+    //         setEdit(true);
+    //         console.log(formikProps.values);
+    //     }
+    // }, [selectedItem]);
 
     const onSubmit = async (values) => {
         try {
             if (!edit) {
-                const res = await addVehicle(values, state.userToken)
+                values = {...values, CustomerId}               
+                const res = await addCustomerVehicle(values, state.userToken)
                 const vehicle = await res.json();
                 if (res.status === 200) {
                     showToastMessage('success', vehicle.message)
+                    getCustomerDetails();
                 }
                 else if (res.status === 409) {
                     showToastMessage('error', vehicle.message)
@@ -104,96 +87,58 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
         }
     };
 
-    const fetchMakes = async (year) => {
+    // Fetch data from API when the component mounts
+    useEffect(() => {
+        getVehicles();
+    }, [refresh]);
+
+    const getVehicles = async () => {
         try {
-            setShowMakeSuggestions(true);
-            setMakeLoading(true);
-            const apiUrl = `https://www.carqueryapi.com/api/0.3/?cmd=getMakes&year=${year}&sold_in_us=&body=`;
-
-            jsonp(apiUrl, null, (err, data) => {
-                if (err) {
-                    fetchMakes(year);
-                    setMakeLoading(false);
-                    toast.error("Something went wrong");
-                } else {
-                    setMakes(data.Makes)
-                    setFilteredMakes(data.Makes)
-                    setMakeLoading(false);
-                }
-            });            
-
+            const vehicles = await fetchVehicles(state.userToken);
+            setVehicles(await vehicles.json());
         } catch (error) {
             console.log(error);
-            setMakeLoading(false);
-            toast.error("Something went wrong");
-        }
-    }
-
-    const fetchModels = (make, year) => {
-        try {
-            setShowModelSuggestions(true);
-            setModelLoading(true);
-            const apiUrl = `https://www.carqueryapi.com/api/0.3/?cmd=getModels&make=${make.toLowerCase()}&year=${year}&sold_in_us=&body=`;
-
-            jsonp(apiUrl, null, (err, data) => {
-                if (err) {
-                    setModelLoading(false);
-                    toast.error("Something went wrong");
-                } else {
-                    setModels(data.Models)
-                    setFilteredModels(data.Models)
-                    setModelLoading(false);
-                }
-            });
-
-        } catch (error) {
-            console.log(error);
-            setModelLoading(false);
-            toast.error("Something went wrong");
+            toast.error("Something went wrong")
         }
     }
 
     const handleInputChange = (inputName, event) => {
         const inputValue = event.target.value;
         setValues({ ...values, [inputName]: inputValue });
-
-        if (inputName === 'make') {
-            const filtered = makes.filter((make) =>
-                make.make_display.toLowerCase().includes(inputValue.toLowerCase())
-            );
-            setFilteredMakes(filtered);
-            setShowMakeSuggestions(true);
-        }
-        else if (inputName === 'model') {
-            const filtered = models.filter((model) =>
-                model.model_name.toLowerCase().includes(inputValue.toLowerCase())
-            );
-            setFilteredModels(filtered);
-            setShowModelSuggestions(true);
-        }
-        else if (inputName === 'year') {
-            fetchMakes(inputValue)
-        }
     };
-
 
     const clearForm = (formikProps) => {
         formikProps.resetForm({
             values: {
-                make: "",
-                model: "",
+                year: "",
+                vehicle: "",
+                odometer: "",
+                license: "",
+                engine_size: "",
+                color: "",
+                notes: "",                
             },
             errors: {
-                make: "",
-                model: "",
+                year: "",
+                vehicle: "",
+                odometer: "",
+                license: "",
+                engine_size: "",
+                color: "",
+                notes: "",  
             },
         });
     };
 
     const formikProps = useFormik({
         initialValues: {
-            make: "",
-            model: "",
+            year: "",
+            vehicle: "",
+            odometer: "",
+            license: "",
+            engine_size: "",
+            color: "",
+            notes: "",  
         },
         validationSchema: schema,
         onSubmit,
@@ -211,15 +156,10 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
 
     useEffect(() => {
         function handleClickOutside(event) {
-            if (makeInputRef.current && !makeInputRef.current.contains(event.target)) {
-                setShowMakeSuggestions(false);
-            }
-
-            if (modelInputRef.current && !modelInputRef.current.contains(event.target)) {
-                setShowModelSuggestions(false);
+            if (vehicleInputRef.current && !vehicleInputRef.current.contains(event.target)) {
+                setShowVehicleSuggestions(false);
             }
         }
-
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => {
@@ -227,13 +167,16 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
         };
     }, []);
 
-    const startYear = 1950;
-    const endYear = 2022;
+    const startYear = import.meta.env.VITE_START_YEAR;
+    const endYear = import.meta.env.VITE_END_YEAR;
     const years = [];
     for (let year = startYear; year <= endYear; year++) {
         years.push(year);
     }
 
+    useEffect(() => {
+
+    }, [values.vehicle]);
     return (
         <Dialog open={open}>
             {open && (
@@ -270,7 +213,7 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                             <div className="p-6">
                                 <div className="flex items-center justify-start space-x-4">
 
-                                    {/* <div>
+                                    <div>
                                         <label className="font-bold">Year</label> <br />
                                         <select
                                             className="w-full p-2 border border-gray-300 rounded-md text-black font-small"
@@ -278,35 +221,33 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                                             name="year"
                                             type="number"
                                             value={values.year}
-                                            onChange={(e) => handleInputChange('year', e)}
+                                            onChange={handleChange}
                                         >
                                             <option value="">Select a year</option>
-
                                             {years.map((year) => (
                                                 <option key={year} value={year}>{year}</option>
                                             ))}
                                         </select>
-                                        
+
                                         {(touched.year && errors.year) ? (
                                             <div className="text-red-500">
                                                 {errors.year}
                                             </div>
                                         ) : (<div></div>)}
-                                    </div> */}
+                                    </div>
 
-                                    <div className="relative" ref={makeInputRef}>
-                                        <label className="font-bold">Make</label> <br />
+                                    <div className="relative" ref={vehicleInputRef}>
+                                        <label className="font-bold">Vehicle</label> <br />
                                         <input
                                             className="w-full p-2 border border-gray-300 rounded-md text-black font-small"
-                                            id="make"
-                                            name="make"
+                                            id="vehicle"
+                                            name="vehicle"
                                             type="text"
-                                            value={values.make}
-                                            onClick={() => setShowMakeSuggestions(true)}
-                                            onChange={(e) => handleInputChange('make', e)}
+                                            value={values.vehicle}
+                                            onClick={() => setShowVehicleSuggestions(true)}
+                                            onChange={handleChange}
                                             onBlur={handleBlur}
                                             autoComplete="off"
-                                            disabled={values.year !== '' ? false : true}
                                         />
 
                                         {(touched.make && errors.make) ? (
@@ -314,23 +255,21 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                                                 {errors.make}
                                             </div>
                                         ) : (<div></div>)}
-                                        {showMakeSuggestions && (
+                                        {showVehicleSuggestions && (
                                             <ul className="d-block absolute z-50 bg-white border border-slate-700 w-full mt-1 overflow-y-auto min-h-24 max-h-48">
-                                                {makeLoading ?
-                                                    <Spinner className="mx-auto my-auto h-6 w-6 text-blue-900/50" />
-                                                    :
-                                                    filteredMakes.map((make) => (
-                                                        <li key={make.make_display} className="cursor-pointer px-2 py-1 rounded-sm hover:bg-gray-200" onClick={() => { setValues({ ...values, make: make.make_display }); setFilteredMakes([]); setShowMakeSuggestions(false); fetchModels(make.make_display, values.year) }}>
-                                                            {make.make_display}
+                                                {vehicles.length > 0 ?
+                                                    vehicles.filter(vehicle => `${vehicle.make.toLowerCase()} ${vehicle.model.toLowerCase()}`.includes(values.vehicle.trim().toLowerCase())).map((vehicle) => (
+                                                        <li key={vehicle.id} className="cursor-pointer px-2 py-1 rounded-sm hover:bg-gray-200" onClick={() => { setValues({...values, vehicle: `${vehicle.make} ${vehicle.model}`}); setShowVehicleSuggestions(false)}}>
+                                                            {vehicle.make} {vehicle.model}
                                                         </li>
-                                                    ))}
+                                                    ))
+                                                    :
+                                                    <Spinner className="mx-auto my-auto h-6 w-6 text-blue-900/50" />
+                                                }
                                             </ul>
                                         )}
                                     </div>
-                                </div>
-
-                                <div className="flex items-center justify-start space-x-4">
-                                    <div className="relative" ref={modelInputRef}>
+                                    {/* <div className="relative" ref={modelInputRef}>
                                         <label className="font-bold">Model</label> <br />
                                         <input
                                             className="w-full p-2 border border-gray-300 rounded-md text-black font-small"
@@ -361,7 +300,99 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                                                     ))}
                                             </ul>
                                         )}
+                                    </div> */}
+                                    <div>
+                                        <label className="font-bold">Odometer</label> <br />
+                                        <input
+                                            className="w-full p-2 border border-gray-300 rounded-md text-black font-small"
+                                            id="odometer"
+                                            name="odometer"
+                                            type="number"
+                                            value={values.odometer}
+                                            onChange={(e) => handleInputChange('odometer', e)}
+                                            onBlur={handleBlur}
+                                            autoComplete="off"
+                                        />
+                                        {touched.odometer && errors.odometer ? (
+                                            <div className="text-red-500">
+                                                {errors.odometer}
+                                            </div>
+                                        ) : (<div></div>)}
                                     </div>
+                                </div>
+
+                                <div className="flex items-center justify-start space-x-4 mt-4">
+                                    <div>
+                                        <label className="font-bold">License No.</label> <br />
+                                        <input
+                                            className="w-full p-2 border border-gray-300 rounded-md text-black font-small"
+                                            id="licenseNo"
+                                            name="licenseNo"
+                                            type="text"
+                                            value={values.licenseNo}
+                                            onChange={(e) => handleInputChange('licenseNo', e)}
+                                            onBlur={handleBlur}
+                                            autoComplete="off"
+                                        />
+                                        {touched.licenseNo && errors.licenseNo ? (
+                                            <div className="text-red-500">
+                                                {errors.licenseNo}
+                                            </div>
+                                        ) : (<div></div>)}
+                                    </div>
+                                    <div>
+                                        <label className="font-bold">Engine Size</label> <br />
+                                        <input
+                                            className="w-full p-2 border border-gray-300 rounded-md text-black font-small"
+                                            id="engineSize"
+                                            name="engineSize"
+                                            type="number"
+                                            value={values.engineSize}
+                                            onChange={(e) => handleInputChange('engineSize', e)}
+                                            onBlur={handleBlur}
+                                            autoComplete="off"
+                                        />
+                                        {touched.engineSize && errors.engineSize ? (
+                                            <div className="text-red-500">
+                                                {errors.engineSize}
+                                            </div>
+                                        ) : (<div></div>)}
+                                    </div>
+                                    <div>
+                                        <label className="font-bold">Color</label> <br />
+                                        <input
+                                            className="w-full p-2 border border-gray-300 rounded-md text-black font-small"
+                                            id="color"
+                                            name="color"
+                                            type="text"
+                                            value={values.color}
+                                            onChange={(e) => handleInputChange('color', e)}
+                                            onBlur={handleBlur}
+                                            autoComplete="off"
+                                        />
+                                        {touched.color && errors.color ? (
+                                            <div className="text-red-500">
+                                                {errors.color}
+                                            </div>
+                                        ) : (<div></div>)}
+                                    </div>
+
+                                </div>
+                                <div className="mt-4">
+                                    <label className="font-bold">Notes</label> <br />
+                                    <textarea
+                                        className="w-full p-2 border border-gray-300 rounded-md text-black font-medium"
+                                        id="notes"
+                                        name="notes"
+                                        value={values.notes}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                    />
+                                    {touched.notes && errors.notes && (
+                                        <div className="text-red-500">
+                                            {errors.notes}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex items-center justify-end space-x-2 sticky bg-gradient-to-br from-gray-800 to-gray-700">
@@ -382,10 +413,8 @@ const MyPopUpForm = ({ open, close, selectedItem, setSelectedItem, refresh, setR
                         </div>
                     </div>
                 </form>
-
-
             )}
         </Dialog>
     );
 };
-export default MyPopUpForm;
+export default CustomerVehicleForm;

@@ -23,7 +23,7 @@ export function Sidenav({ routes }) {
         className={`relative`}
       >
         <div className="flex items-center space-x-2 p-2">
-          <img className="rounded-xl h-[100px] w-[100px]" src={state.business?.logo} alt="Business logo" width={100} height={100} />
+          <img className="rounded-xl h-[60px] w-[60px]" src={state.business?.logo} alt="Business logo" width={60} height={60} />
           <Link to="/" className="w-full text-center">
             <Typography
               variant="h6"

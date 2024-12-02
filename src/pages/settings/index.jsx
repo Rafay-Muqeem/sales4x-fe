@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Typography } from '@material-tailwind/react';
-import Taxes from './taxes';
-import Users from './users';
-import Profile from './general';
+import Taxes from './taxes/taxes';
+import Users from './users/users';
+import Profile from './general/general';
 import {
   Cog8ToothIcon
 } from "@heroicons/react/24/solid";
 import { State } from '@/state/Context';
+import Vehicles from './vehicles/vehicles';
 
 export function Settings() {
   const { state } = State();
@@ -25,6 +26,10 @@ export function Settings() {
       title: 'Users Settings',
       component: <Users />
     },
+    Vehicles: {
+      title: 'Vehicles Settings',
+      component: <Vehicles />
+    }
   };
 
   const handleSectionClick = (section) => setActiveSection(section);

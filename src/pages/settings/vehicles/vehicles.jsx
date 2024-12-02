@@ -1,6 +1,6 @@
 
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { TruckIcon, TrashIcon } from "@heroicons/react/24/solid";
+import { MagnifyingGlassIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
+import { TrashIcon } from "@heroicons/react/24/solid";
 import {
     Card,
     CardHeader,
@@ -15,16 +15,16 @@ import {
 } from "@material-tailwind/react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import MyPopUpForm from "./form";
+import MyPopUpForm from "./vehicleForm";
 import { fetchVehicles } from "@/services/fetchVehicles";
 import { delVehicle } from "@/services/delVehicle";
-import {toast} from 'react-toastify';
+import { toast } from 'react-toastify';
 import { State } from "@/state/Context";
 
 const TABLE_HEAD = ["Make", "Model", "Actions"];
 
-export function Vehicles() {
-    const {state} = State();    
+export default function Vehicles() {
+    const { state } = State();
     const [selectAll, setSelectAll] = useState(false);
     const [selectedRows, setSelectedRows] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
@@ -69,7 +69,7 @@ export function Vehicles() {
 
     const getVehicles = async () => {
         try {
-            const vehicles = await fetchVehicles(state.userToken);            
+            const vehicles = await fetchVehicles(state.userToken);
             setFinalItems(await vehicles.json());
             setLoading(false)
         } catch (error) {
@@ -197,14 +197,15 @@ export function Vehicles() {
         <>
             <Card className="h-full w-full ">
                 <CardHeader floated={false} shadow={false} className="rounded-none">
-                    <div className="mb-4 sm:mb-0 flex items-center">
-                        <Typography variant="h5" color="blue-gray" className="flex items-center">
-                            <TruckIcon className="h-12 w-12 text-blueGray-500 ml-2" />
-                            Vehicles
-                        </Typography>
-                    </div>
-                    <div className="flex flex-col md:flex-row items-center w-full mt-5">
+                    <div className="flex flex-col md:flex-row items-center w-full h-max py-3">
                         <div className="w-full md:w-2/5 flex items-center justify-center md:justify-start gap-2">
+                            <Typography variant="h5" color="blue-gray" className="flex items-center">
+                                Vehicles
+                            </Typography>
+                            <PlusCircleIcon onClick={openPopup} className="ml-4 mr-1 h-7 w-7 text-blue-600 cursor-pointer" />
+                            <span className="text-base">Add new vehicle</span>
+                        </div>
+                        <div className="flex items-center mt-4 md:mt-0 md:ml-auto">
                             <div className="w-full md:flex-1 md:mr-4">
                                 <Input
                                     label="Search"
@@ -213,16 +214,6 @@ export function Vehicles() {
                                     icon={<MagnifyingGlassIcon className="h-5 w-5" />}
                                 />
                             </div>
-                            <div className="flex gap-2 lg:gap-4">
-                                <Button className="w-full bg-blue-900 lg:w-auto" size="md" onClick={openPopup} >
-                                    New
-                                </Button>
-                                {/* <Button className="w-full bg-red-900 lg:w-auto" size="md" onClick={handleDelete} disabled={selectedRows.length == 0} >
-                                    Delete
-                                    </Button> */}
-                            </div>
-                        </div>
-                        <div className="flex items-center mt-4 md:mt-0 md:ml-auto">
                             <Typography variant="small" color="blue-gray" className="mr-2">
                                 Items per page:
                             </Typography>
@@ -239,20 +230,10 @@ export function Vehicles() {
                     </div>
                 </CardHeader>
 
-                <CardBody className="p-2 overflow-scroll px-0">
+                <CardBody className="p-2 overflow-auto px-0">
                     <table className=" w-full min-w-max table-auto text-left">
                         <thead>
                             <tr>
-                                <th className="border-y border-blue-gray-100 bg-blue-gray-50/50 p-4">
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            className="form-checkbox text-blue-500 rounded border-gray-400 shadow-sm ml-1"
-                                            checked={selectAll}
-                                            onChange={handleSelectAll}
-                                        />
-                                    </label>
-                                </th>
                                 {TABLE_HEAD.map((head) => (
                                     <th
                                         key={head}
@@ -273,18 +254,11 @@ export function Vehicles() {
                             {currentItems.map(({ make, model, id }, index) => {
                                 const isLast = index === currentItems.length - 1;
                                 const classes = isLast
-                                    ? "p-4"
-                                    : "p-4 border-b border-blue-gray-50";
+                                    ? "p-2"
+                                    : "p-2 border-b border-blue-gray-50";
                                 const isChecked = selectedRows.includes(index);
                                 return (
                                     <tr key={id}>
-                                        <td className={classes}>
-                                            <input
-                                                type="checkbox"
-                                                checked={isChecked}
-                                                onChange={() => handleRowSelect(index)}
-                                            />
-                                        </td>
                                         <td className={classes}>
                                             <Link
                                                 to="#"
@@ -304,7 +278,7 @@ export function Vehicles() {
                                             >
                                                 {model}
                                             </Typography>
-                                        </td>                                        
+                                        </td>
                                         <td className={classes}>
                                             <Tooltip content="Delete Vehicle">
                                                 <IconButton variant="text" onClick={() => handleDelete(id)}>

@@ -59,7 +59,7 @@ export function Invoice() {
         setInvoices(totalInvoices);
       }
       else if (state.Settings.General.invoice === 'current') {
-        setInvoices(totalInvoices.filter(invoice => invoice.current === true))
+        setInvoices(totalInvoices?.data.filter(invoice => invoice.current === true))
       }
       setLoading(false);
 

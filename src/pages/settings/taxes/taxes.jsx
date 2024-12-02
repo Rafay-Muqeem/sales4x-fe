@@ -59,8 +59,8 @@ function Taxes() {
         <table className="border-collapse w-full">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="text-left px-4 py-2 w-1/2">NAME</th>
-              <th className="text-center px-4 py-2 w-1/5">RATE</th>
+              <th className="text-left p-4 w-1/2">NAME</th>
+              <th className="text-center p-4 w-1/5">RATE</th>
               {/* <th className="text-center px-4 py-2 w-1/5">DEFAULT</th> */}
               {state.userInfo.role === 'super_admin' && (
                 <th
@@ -69,20 +69,21 @@ function Taxes() {
                   BUSINESS
                 </th>
               )}
+              <th className="text-center p-4 w-1/5">Actions</th>
             </tr>
           </thead>
           <tbody>
             {taxes.map((tax) => (
               <tr key={tax.id} className="border-b border-gray-200">
-                <td className="text-left px-4 py-2"><PencilIcon onClick={() => handleEdit(tax)} className="inline-block mr-2 h-5 w-5 text-blue-700 cursor-pointer" />{tax.name}</td>
-                <td className="text-center px-4 py-2">{tax.rate}{tax.type}</td>
+                <td className="text-left p-4"><PencilIcon onClick={() => handleEdit(tax)} className="inline-block mr-2 h-5 w-5 text-blue-700 cursor-pointer" />{tax.name}</td>
+                <td className="text-center p-4">{tax.rate}{tax.type}</td>
                 {/* <td className="text-center px-4 py-2">{tax.default ? <div className="flex items-center justify-center"> <CheckIcon className="inline-block mr-2 h-6 w-6 text-green-600" /></div> : ""}</td> */}
                 {state.userInfo.role === 'super_admin' && (
                   <td>
                     {tax.Business.name}
                   </td>
                 )}
-                <td className="text-center px-4 py-2 cursor-pointer"><XCircleIcon onClick={() => handleDel(tax.id)} className="h-6 w-6 text-gray-600 hover:text-red-500" /></td>
+                <td className="text-center p-4 cursor-pointer"><XCircleIcon onClick={() => handleDel(tax.id)} className="h-6 w-6 text-gray-600 mx-auto hover:text-red-500" /></td>
               </tr>
             ))}
           </tbody>

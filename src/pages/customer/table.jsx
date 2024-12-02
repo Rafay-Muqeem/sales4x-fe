@@ -71,7 +71,7 @@ export function Customers() {
   const getCustomers = async () => {
     try {
       const res = await fetchCustomers(state.userToken);
-      const customers = await res.json();      
+      const customers = await res.json(); 
       setFinalItems(customers);
       setLoading(false);
     } catch (error) {
