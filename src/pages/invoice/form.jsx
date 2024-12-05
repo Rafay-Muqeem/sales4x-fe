@@ -34,7 +34,7 @@ const TABLE_HEAD = [
 
 const schema = Yup.object().shape({
   customer: Yup.string().required("Customer is required"),
-  vehicle: Yup.string().required("Vehicle is reuired"),
+  vehicle: Yup.string().required("Vehicle is required"),
   paymentMethod: Yup.string().required("Payment Method is required"),
 });
 
@@ -42,11 +42,9 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
   const componentRef = useRef();
   const { state } = State();
   const [customers, setCustomers] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [taxes, setTaxes] = useState([]);
-  const [selectedTax, setSelectedTax] = useState(null);
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([{
     product: "",
@@ -60,6 +58,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
   const [printInvoice, setPrintInvoice] = useState([]);
   const [businesses, setBusinesses] = useState([]);
   const [business, setBusiness] = useState(null);
+  const [appliedTaxes, setAppliedTaxes] = useState([]);
 
   const showToastMessage = (type, message) => {
     if (type === 'success') {
@@ -73,6 +72,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
     }
   };
 
+  // close popup
   const handleClose = () => {
     setSelectedCustomer(null)
     setSelectedVehicle(null)
@@ -83,12 +83,14 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
       price: 0,
       taxable: false
     }]);
+    setAppliedTaxes([]);
     clearForm(formikProps);
     setEdit(false)
     setBusiness(null);
     close();
   };
 
+  // get businesses
   const getBusinesses = async () => {
     try {
       const res = await fetchBusinesses(state.userToken);
@@ -104,24 +106,22 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
     getBusinesses();
     getProducts();
     getCustomers();
-    getVehicles();
     getTaxes();
-
   }, []);
 
   useEffect(() => {
     if (selectedInvoice) {
       setPrintInvoice(selectedInvoice);
-
       setInvoiceId(selectedInvoice.id)
-      setSelectedCustomer((customers.filter(customer => customer.id === selectedInvoice.CustomerId))[0])
-      setSelectedVehicle((vehicles.filter(vehicle => vehicle.id === selectedInvoice.VehicleId))[0])
+      setSelectedCustomer(selectedInvoice.Customer)
+      setSelectedVehicle(selectedInvoice.CustomerVehicle)
       setProducts(selectedInvoice.Product)
-      setValues({ ...values, ['customer']: selectedInvoice.CustomerId, ['vehicle']: selectedInvoice.VehicleId, ['paymentMethod']: selectedInvoice.paymentMethod })
+      setValues({ ...values, ['customer']: selectedInvoice.CustomerId, ['vehicle']: selectedInvoice.CustomerVehicleId, ['paymentMethod']: selectedInvoice.paymentMethod })
       setEdit(true)
       setBusiness(selectedInvoice.BusinessId);
 
       let selectedProd = [...selectedProducts]
+      const productTaxes = [];
       selectedInvoice.Product.forEach((prod) => {
         const aProd = {
           product: prod.id,
@@ -132,27 +132,30 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
           taxable: prod.taxable
         }
         selectedProd = [aProd, ...selectedProd];
-
+        prod.Tax?.forEach(productTax => {
+          productTaxes.some(tax => tax.id === productTax.id)? null : productTaxes.push(productTax);
+        })
       })
+      setAppliedTaxes(productTaxes);
       setSelectedProducts(selectedProd);
       setSelectedInvoice(null)
     }
 
-    console.log(selectedCustomer)
   }, [selectedInvoice])
 
+  // handle submit
   const onSubmit = async (values) => {
 
     const selectedProductIds = selectedProducts.map((product) => `${product.id}:${product.quantity}`);
     selectedProductIds.pop();
-
+   
     const data = {
-      invoiceData: {
+      invoiceData: {        
         totalAmount: calculateTotalAmountWithTax(),
         paymentMethod: values.paymentMethod,
         paymentStatus: "Paid",
         CustomerId: selectedCustomer.id,
-        VehicleId: selectedVehicle.id,
+        CustomerVehicleId: selectedVehicle.id,
         BusinessId: null
       },
       "products": selectedProductIds,
@@ -193,6 +196,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
     handleClose();
   };
 
+  // get products
   const getProducts = async () => {
     try {
       const fetchedProducts = await fetchProducts(state.userToken);
@@ -204,6 +208,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
     }
   };
 
+  // handle product change
   const handleProductChange = async (index, quantity, selectedProId) => {
     const updatedItems = [...selectedProducts];
     updatedItems[index].product = selectedProId; // Assign the selected product's ID to product
@@ -222,6 +227,13 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
         (product) => product.id === selectedProId
       );
 
+      // adding taxes
+      const productTaxes = [];
+      selectedProductDetails.Tax?.forEach(productTax => {
+        productTaxes.some(tax => tax.id === productTax.id)? null : productTaxes.push(productTax);
+      })
+      setAppliedTaxes(productTaxes);
+      
       if (selectedProductDetails) {
         updatedItems[index].id = selectedProductDetails.id; // Assign the selected product's ID
         updatedItems[index].name = selectedProductDetails.name;
@@ -256,60 +268,65 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
 
   };
 
+  // handle quantity change
   const handleQuantityChange = (index, quantity) => {
     const updatedItems = [...selectedProducts];
     updatedItems[index].quantity = Number(quantity);
     setSelectedProducts(updatedItems);
   };
 
+  // calculate amount
   const calculateAmount = (price, quantity) => {
     return price * quantity;
   };
 
+  // handle taxable change
   const handleTaxableChange = (index, isChecked) => {
     const updatedItems = [...selectedProducts];
     updatedItems[index].taxable = isChecked;
     setSelectedProducts(updatedItems);
   };
 
+  // handle remove product
   const handleRemoveProduct = (index) => {
     if (selectedProducts.length > 1) {
       const updatedItems = [...selectedProducts];
       updatedItems.splice(index, 1);
       setSelectedProducts(updatedItems);
+      setAppliedTaxes([]);
     }
   };
 
+  // get customers
   const getCustomers = async () => {
     const fetchedCustomers = await fetchCustomers(state.userToken);
     const customersData = await fetchedCustomers.json();
     setCustomers(customersData);
   };
 
-  const getVehicles = async () => {
-    const fetchedVehicles = await fetchVehicles(state.userToken);
-    const vehiclesData = await fetchedVehicles.json();
-    setVehicles(vehiclesData);
-  };
-
+  // handle customer change
   const handleCustomerChange = (customerId) => {
     const foundCustomer = customers.find(
       (customer) => `${customer.id}` === customerId
     );
-
     setSelectedCustomer(foundCustomer);
-    setValues({ ...values, ['customer']: customerId })
+    if (foundCustomer && foundCustomer.Vehicle.length > 0) {
+      setSelectedVehicle(foundCustomer.Vehicle[0]);
+      setValues({ ...values, ['customer']: customerId, ['vehicle']: foundCustomer.Vehicle[0].id })
+    };
+    // setValues({ ...values, ['customer']: customerId })
   };
 
+  // handle vehicle change
   const handleVehicleChange = (vehicleId) => {
-    const foundVehicle = vehicles.find(
+    const foundVehicle = selectedCustomer.Vehicle.find(
       (vehicle) => `${vehicle.id}` === vehicleId
     );
-
     setSelectedVehicle(foundVehicle);
     setValues({ ...values, ['vehicle']: vehicleId })
   };
 
+  // calculate total amount
   const calculateTotalAmount = () => {
     let total = 0;
     selectedProducts.forEach((item) => {
@@ -318,30 +335,52 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
     return total;
   };
 
-  const calculateTaxAmount = () => {
-    if (selectedTax) {
-      if (selectedTax.type === '$') {
-        return selectedTax.rate;
-      } else if (selectedTax.type === '%') {
-        const taxableProducts = selectedProducts.filter(product => product.taxable === true);
-        const totalTaxableAmount = taxableProducts.reduce((acc, product) => {
-          return acc + (product.price * product.quantity);
-        }, 0);
-        return (totalTaxableAmount * selectedTax.rate) / 100;
-      }
+  const calculateTaxAmount = (tax) => {
+    if (tax) {
+      if (tax.type === '$') {
+        return tax.rate;
+      } else if (tax.type === '%') {
+          const taxableProducts = selectedProducts.filter(product => product.taxable === true);
+          const totalTaxableAmount = taxableProducts.reduce((acc, product) => {
+            return acc + (product.price * product.quantity);
+          }, 0);
+          return ((totalTaxableAmount * tax.rate) / 100).toFixed(2);
+        }
+      };
+  }
+
+  // calculate tax amount
+  const calculateTotalTaxAmount = () => {
+    let totalTaxAmount=0;
+    if (appliedTaxes.length > 0) {
+      appliedTaxes.forEach((tax) => {
+        if (tax.type === '$') {
+          totalTaxAmount+=tax.rate;
+        } else if (tax.type === '%') {
+          const taxableProducts = selectedProducts.filter(product => product.taxable === true);
+          const totalTaxableAmount = taxableProducts.reduce((acc, product) => {
+            return acc + (product.price * product.quantity);
+          }, 0);
+
+          totalTaxAmount+=(totalTaxableAmount * tax.rate) / 100;
+        }
+      });
+      return totalTaxAmount;
     }
     return 0;
   };
 
+  // calculate total amount with tax
   const calculateTotalAmountWithTax = () => {
-    return totalAmount + calculateTaxAmount();;
+    return (totalAmount + calculateTotalTaxAmount()).toFixed(2);
   };
+
   useEffect(() => {
     const total = calculateTotalAmount();
     setTotalAmount(total);
   }, [selectedProducts]);
 
-
+  // get taxes
   const getTaxes = async () => {
     try {
       const fetchedTaxes = await fetchTaxes(state.userToken);
@@ -351,23 +390,25 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
       console.log(error);
       toast.error("Something went wrong")
     }
-
   };
 
+  // handle tax change
   const handleTaxChange = (taxId) => {
-    const foundtax = taxes.find(
+    const foundTax = taxes.find(
       (tax) => `${tax.id}` === taxId
     );
-
-    setSelectedTax(foundtax);
+    const isTaxAlreadyApplied = appliedTaxes.some(tax => tax.id === foundTax.id);
+    if (!isTaxAlreadyApplied) setAppliedTaxes([...appliedTaxes, foundTax]);
   };
 
+  // set default tax
   useEffect(() => {
-    if (taxes.length !== 0) {
+    if (taxes.length > 0) {
       const foundtax = taxes.find(
         (tax) => tax.default === true
       );
-      setSelectedTax(foundtax);
+
+      // setAppliedTaxes([foundtax]);
     }
   }, [taxes]);
 
@@ -448,8 +489,8 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                 </div>
 
                 <div className="overflow-y-auto h-[80vh] overflow-x-hidden p-2">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
+                  <div className="flex gap-4">
+                    <div className="basis-[40%] max-w-[40%]">
                       <label className="p-2 font-bold">Customer</label> <br />
                       <select
                         id="customer"
@@ -496,35 +537,6 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                         value={selectedCustomer ? selectedCustomer.email : ''}
                         disabled
                       /> <br />
-                    </div>
-
-                    <div>
-                      <label className="p-2 font-bold">Vehicle</label> <br />
-                      <select
-                        id="vehicle"
-                        name="vehicle"
-                        className="w-48 lg:w-72 m-2 p-2 border border-gray-300 bg-inherit rounded-md"
-                        value={values.vehicle}
-                        onChange={(e) =>
-                          handleVehicleChange(e.target.value)
-                        }
-                        onBlur={handleBlur}
-                      >
-                        <option value="">Select Vehicle</option>
-                        {vehicles.map((vehicle) => (
-                          <option
-                            key={vehicle.id}
-                            value={vehicle.id}
-                          >
-                            {vehicle.make} {vehicle.model}
-                          </option>
-                        ))}
-                      </select>
-                      {touched.vehicle && errors.vehicle ? (
-                        <div className="text-red-500">
-                          {errors.vehicle}
-                        </div>
-                      ) : (<div></div>)} <br />
 
                       <label className="p-2 font-bold">Phone</label> <br />
 
@@ -549,68 +561,180 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                           disabled
                         />
                       </div>
-                    </div>
+                    </div>                    
 
-                    <div className="flex flex-col ">
-                      <div className="text-5xl mt-5">
-                        <h1>$  {calculateTotalAmountWithTax()}</h1>
-                      </div>
+                    <div className="basis-[60%] max-w-[60%]">
+                      <label className="p-2 font-bold">Vehicle</label> <br />
+                      <select
+                        id="vehicle"
+                        name="vehicle"
+                        className="w-48 lg:w-72 m-2 p-2 border border-gray-300 bg-inherit rounded-md"
+                        value={values.vehicle}
+                        onChange={(e) =>
+                          handleVehicleChange(e.target.value)
+                        }
+                        onBlur={handleBlur}
+                      >
 
-                      <div className="mt-3">
-                        {/* <label className="p-2 font-bold">Date</label> <br />
-                      <input
-                        className="w-48 lg:w-72 m-2 p-2 border border-gray-300 rounded-md text-black"
-                        id="date"
-                        name="date"
-                        type="date"
-                      /> */}
-                        <label className="p-2 font-bold">Payment Method</label> <br />
-                        <select
-                          id="paymentMethod"
-                          name="paymentMethod"
-                          className="w-48 lg:w-72 m-2 p-2 border border-gray-300 bg-inherit rounded-md"
-                          value={values.paymentMethod}
-                          onChange={(e) =>
-                            setValues({ ...values, ['paymentMethod']: e.target.value })
-                          }
-                          onBlur={handleBlur}
-                        >
-                          <option value="">Select Payment Method</option>
-                          <option value="Cash">Cash</option>
-                          <option value="Check">Check</option>
-                          <option value="Card">Card</option>
-                        </select>
-                        {touched.paymentMethod && errors.paymentMethod ? (
-                          <div className="text-red-500">
-                            {errors.paymentMethod}
-                          </div>
-                        ) : (<div></div>)}
-
-                        {state.userInfo.role === 'super_admin' && (
+                        {selectedCustomer && selectedCustomer.Vehicle.length > 0? selectedCustomer.Vehicle.map((vehicle) => (
+                          <option
+                            key={vehicle.id}
+                            value={vehicle.id}
+                          >
+                            {vehicle.make} {vehicle.model}
+                          </option>
+                        ))
+                        :
+                          <option value="">Select Vehicle</option>
+                        }
+                      </select>
+                      {touched.vehicle && errors.vehicle ? (
+                        <div className="text-red-500">
+                          {errors.vehicle}
+                        </div>
+                      ) : (<div></div>)} <br />
+                      <div className="flex gap-5">
+                        <div className="flex flex-col">
                           <div>
-                            <label className="p-2 font-bold">Select Business</label> <br />
-                            <select
-                              className="w-48 p-2 border border-gray-300 bg-inherit rounded-md"
-                              label="Select Business"
-                              animate={{
-                                mount: { y: 0 },
-                                unmount: { y: 25 },
-                              }}
-                              value={business}
-                              onChange={(e) =>
-                                setBusiness(e.target.value)
-                              }
-                              size="md"
-                            >
-                              {businesses ?
-                                businesses.map((business) => (
-                                  <option key={business.id} value={business.id}>{business.name}, {business.location}</option>
-                                )) : []}
-                            </select>
+                          <label className="p-2 font-bold">Make</label> <br />
+                          <input
+                            className="w-48 lg:w-72 m-2 p-2 border border-gray-300 rounded-md text-black"
+                            id="make"
+                            name="make"
+                            type="text"
+                            value={selectedVehicle ? selectedVehicle.make : ''}
+                            disabled
+                          /> <br />
                           </div>
-                        )}
+
+                          <div>
+                          <label className="p-2 font-bold">Model</label> <br /> 
+                          <input
+                            className="w-48 lg:w-72 m-2 p-2 border border-gray-300 rounded-md text-black"
+                            id="model"
+                            name="model"
+                            type="text"
+                            value={selectedVehicle ? selectedVehicle.model : ''}
+                            disabled
+                          /> <br />
+                          </div>
+                        </div>
+                        <div className="flex flex-col" >
+                          <div>
+                          <label className="p-2 font-bold">Year</label> <br /> 
+                          <input
+                            className="w-48 lg:w-72 m-2 p-2 border border-gray-300 rounded-md text-black"
+                            id="year"
+                            name="year"
+                            type="number"
+                            value={selectedVehicle ? selectedVehicle.year : ''}
+                            disabled
+                          /> <br /> 
+                          </div>
+
+                          <div>
+                          <label className="p-2 font-bold">Color</label> <br /> 
+                          <input
+                            className="w-48 lg:w-72 m-2 p-2 border border-gray-300 rounded-md text-black"
+                            id="color"
+                            name="color"
+                            type="text"
+                            value={selectedVehicle ? selectedVehicle.color : ''}
+                            disabled
+                          /> <br />
+                          </div>
+                        </div>
                       </div>
-                    </div>
+
+                      <div className="flex gap-5">
+                        <div className="flex flex-col" >
+                          <div>
+                          <label className="p-2 font-bold">Odometer</label> <br /> 
+                          <input
+                            className="w-48 lg:w-72 m-2 p-2 border border-gray-300 rounded-md text-black"
+                            id="year"
+                            name="year"
+                            type="number"
+                            value={selectedVehicle ? selectedVehicle.odometer : ''}
+                            disabled
+                          /> <br /> 
+                          </div>
+
+                          <div>
+                          <label className="p-2 font-bold">License No.</label> <br /> 
+                          <input
+                            className="w-48 lg:w-72 m-2 p-2 border border-gray-300 rounded-md text-black"
+                            id="color"
+                            name="color"
+                            type="text"
+                            value={selectedVehicle ? selectedVehicle.licenseNo : ''}
+                            disabled
+                          /> <br />
+                          </div>
+                        </div>
+                        <div className="flex flex-col ml-3 place-self-end">
+                          <div className="text-5xl mt-5">
+                            <h1>$  {calculateTotalAmountWithTax()}</h1>
+                          </div>
+
+                          <div className="mt-3">
+                            {/* <label className="p-2 font-bold">Date</label> <br />
+                          <input
+                            className="w-48 lg:w-72 m-2 p-2 border border-gray-300 rounded-md text-black"
+                            id="date"
+                            name="date"
+                            type="date"
+                          /> */}
+                            <label className="p-2 font-bold">Payment Method</label> <br />
+                            <select
+                              id="paymentMethod"
+                              name="paymentMethod"
+                              className="w-48 lg:w-72 m-2 p-2 border border-gray-300 bg-inherit rounded-md"
+                              value={values.paymentMethod}
+                              onChange={(e) =>
+                                setValues({ ...values, ['paymentMethod']: e.target.value })
+                              }
+                              onBlur={handleBlur}
+                            >
+                              <option value="">Select Payment Method</option>
+                              <option value="Cash">Cash</option>
+                              <option value="Check">Check</option>
+                              <option value="Card">Card</option>
+                            </select>
+                            {touched.paymentMethod && errors.paymentMethod ? (
+                              <div className="text-red-500">
+                                {errors.paymentMethod}
+                              </div>
+                            ) : (<div></div>)}
+
+                            {state.userInfo.role === 'super_admin' && (
+                              <div>
+                                <label className="p-2 font-bold">Select Business</label> <br />
+                                <select
+                                  className="w-48 p-2 border border-gray-300 bg-inherit rounded-md"
+                                  label="Select Business"
+                                  animate={{
+                                    mount: { y: 0 },
+                                    unmount: { y: 25 },
+                                  }}
+                                  value={business}
+                                  onChange={(e) =>
+                                    setBusiness(e.target.value)
+                                  }
+                                  size="md"
+                                >
+                                  {businesses ?
+                                    businesses.map((business) => (
+                                      <option key={business.id} value={business.id}>{business.name}, {business.location}</option>
+                                    )) : []}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                                                                  
+                    </div>                  
                   </div>
 
                   <Card className=" w-full">
@@ -683,7 +807,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                                   type="checkbox"
                                   checked={item.taxable}
                                   readOnly
-                                onChange={(e) => handleTaxableChange(index, e.target.checked)}
+                                  onChange={(e) => handleTaxableChange(index, e.target.checked)}
                                 />
                               </td>
                               <td className="p-4 border-b border-blue-gray-50">
@@ -714,66 +838,87 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
                     </CardBody>
                   </Card>
 
-                  <div className="grid grid-cols-2 ">
-                    <div>
+                  <div className="flex">
+                    <div className="basis-[50%] max-w-[50%]">
                     </div>
 
-                    <div className="flex items-center justify-between mx-10">
-                      <div className="text-1xl mt-5">
-                        <h1>Subtotal</h1>
+                    <div className="basis-[50%] max-w-[50%]">
+                      <div className="flex items-center justify-between mx-10">
+                        <div className="text-1xl mt-5 px-1">
+                          <h1>Subtotal</h1>
+                        </div>
+                        <div className="text-1xl mt-5">
+                          <h1>{totalAmount} $</h1>
+                        </div>
                       </div>
-                      <div className="text-1xl mt-5">
-                        <h1>{totalAmount}</h1>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <select
-                        className="w-32 p-2 border border-gray-300 bg-inherit rounded-md"
-                        value={selectedTax && selectedTax.id}
-                        onChange={(e) =>
-                          handleTaxChange(e.target.value)
-                        }
-                      >
-
-                        {taxes.map((tax) => (
-                          <option
-                            key={tax.id}
-                            value={tax.id}
-                          >
-                            {tax.name}
-                          </option>
+                      
+                      <div className="flex flex-col gap-2 mx-10 my-2">
+                        {appliedTaxes.map((tax) => (
+                          <div className="flex justify-between">
+                            <span className="rounded border w-min p-2 whitespace-nowrap self-center" >{tax.name}</span>
+                            <span className="w-fit p-2 border border-gray-300 rounded-md text-black self-center" >{tax.rate} {tax.type}</span>
+                            <div className="flex items-center justify-center">                              
+                              {/* <p className="w-9 p-2 text-black" >{tax.type}</p> */}
+                              <div className="text-1xl mt-2">
+                                <h1>{calculateTaxAmount(tax)} $</h1>
+                              </div>
+                            </div>
+                          </div>
                         ))}
-                      </select>
-                    </div>
+                      </div>
 
-                    <div className="flex items-center justify-between mx-10">
-                      <div className="flex items-center justify-between ">
-                        <input
-                          className="w-9 p-2 border border-gray-300 rounded-md text-black"
-                          id="phone"
-                          name="phone"
-                          type="text"
-                          value={selectedTax && selectedTax.rate}
-                          disabled
-                        />
-                        <p className="w-9 p-2  text-black" >{selectedTax && selectedTax.type}</p>
+                      <div className="flex justify-between mx-10">
+                        <div className="w-min" >
+                          <select
+                            className="w-min p-2 border border-gray-300 bg-inherit rounded-md outline-none"
+                            value={""}
+                            onChange={(e) =>
+                              handleTaxChange(e.target.value)
+                            }
+                          >
+                            <option value="">Select Tax</option>
+                            {taxes.map((tax) => (
+                              <option
+                                key={tax.id}
+                                value={tax.id}
+                              >
+                                {tax.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div></div>
+                        {/* <div className="flex items-center justify-between mx-10">
+                          <div className="flex items-center ">
+                            <input
+                              className="w-9 p-2 border border-gray-300 rounded-md text-black"
+                              id="phone"
+                              name="phone"
+                              type="text"
+                              value={selectedTax && selectedTax.rate}
+                              disabled
+                            />
+                            <p className="w-9 p-2  text-black" >{selectedTax && selectedTax.type}</p>
+                          </div>
+                          <div className="text-1xl mt-2">
+                            <h1>{calculateTaxAmount()}</h1>
+                          </div>
+                        </div> */}
                       </div>
-                      <div className="text-1xl mt-2">
-                        <h1>{calculateTaxAmount()}</h1>
-                      </div>
-                    </div>
 
-                    <div>
-                    </div>
-                    <div className="flex items-center justify-between mx-10">
-                      <div className="text-1xl mt-2">
-                        <h1>Total</h1>
+                      <div className="flex items-center justify-between mx-10">
+                        <div className="text-1xl mt-2 px-1">
+                          <h1>Total</h1>
+                        </div>
+                        <div className="text-1xl mt-2">
+                          <h1>{calculateTotalAmountWithTax()} $</h1>
+                        </div>
                       </div>
-                      <div className="text-1xl mt-2">
-                        <h1>{calculateTotalAmountWithTax()}</h1>
-                      </div>
+
                     </div>
+                              
+                    
                   </div>
                 </div>
                 <div className="flex items-center justify-end space-x-2 sticky bg-gradient-to-br from-gray-800 to-gray-700">
@@ -810,7 +955,7 @@ const MyPopUpForm = ({ refresh, setRefresh, open, close, selectedInvoice, setSel
 
         )}
       </Dialog>
-      <PrintView printInvoice={printInvoice} componentRef={componentRef} selectedTax={selectedTax} taxAmount={calculateTaxAmount()} totalAmountWithTax={calculateTotalAmountWithTax()} />
+      <PrintView business={state.business} printInvoice={printInvoice} componentRef={componentRef} appliedTaxes={appliedTaxes} calculateTaxAmount={calculateTaxAmount} totalAmountWithTax={calculateTotalAmountWithTax()} />
     </>
   );
 };

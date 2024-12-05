@@ -8,7 +8,7 @@ import {
 const INVOICE_TABLE_HEAD = ["Customer", "Status", "Payment Method", "Total", "Invoice Date", "Vehicle"];
 const PRODUCT_TABLE_HEAD = ["Product", "Quantity", "Price", "Tax", "Amount"]
 
-export default function printView({ printInvoice, componentRef, selectedTax, taxAmount, totalAmountWithTax }) {
+export default function printView({ business, printInvoice, componentRef, appliedTaxes, calculateTaxAmount, totalAmountWithTax }) {
     const currentDate = new Date().toLocaleDateString();
 
     const formatCreatedAt = (createdAt) => {
@@ -28,18 +28,19 @@ export default function printView({ printInvoice, componentRef, selectedTax, tax
         return total;
     };
 
-    useEffect(() => {
-        console.log(printInvoice);
-        console.log(selectedTax);
-    }, [printInvoice])
-
     if (printInvoice.length !== 0) {
 
         return (
             <div ref={componentRef} className="hidden print:block">
                 <div className="flex items-center justify-between p-4">
-                    <h1 className="text-2xl font-bold">Sales4x</h1>
-                    <h2 className="text-2xl">Invoice Receipt</h2>
+                    <div className="flex items-center space-x-2">
+                        <img src={business?.logo} className="rounded-xl h-[60px] w-[60px]" alt="Business logo" width={60} height={60} />
+                        <div className="flex flex-col items-center">
+                            <h3 className="text-2xl font-bold">Sales4x</h3>
+                            <span className="text-sm font-normal text-gray-600">({business?.name})</span>
+                        </div>
+                    </div>
+                    <h2 className="text-2xl font-bold">Invoice Receipt</h2>
                     <p className="text-sm">{currentDate}</p>
                 </div>
                 <Card className="h-full w-full ">
@@ -120,7 +121,7 @@ export default function printView({ printInvoice, componentRef, selectedTax, tax
                                                 color="blue-gray"
                                                 className="font-normal p-2"
                                             >
-                                                {`${printInvoice.Vehicle.make} ${printInvoice.Vehicle.model} ${printInvoice.Vehicle.year}`}
+                                                {`${printInvoice.CustomerVehicle.make} ${printInvoice.CustomerVehicle.model} ${printInvoice.CustomerVehicle.year}`}
                                             </Typography>
                                         </td>
                                     </tr>
@@ -206,55 +207,44 @@ export default function printView({ printInvoice, componentRef, selectedTax, tax
                         </table>
                     </CardBody>
                 </Card>
-                <div className="grid grid-cols-2 ">
-                    <div>
+                <div className="flex ">
+                    <div className="basis-[50%] max-w-[50%]">
                     </div>
+                    
+                    <div className="basis-[50%] max-w-[50%]">
+                        <div className="flex items-center justify-between mx-10">
+                            <div className="text-1xl mt-5">
+                                <h1>Subtotal</h1>
+                            </div>
+                            <div className="text-1xl mt-5">
+                                <h1>{calculateTotalAmount(printInvoice.Product)} $</h1>
+                            </div>
+                        </div>
 
-                    <div className="flex items-center justify-between mx-10">
-                        <div className="text-1xl mt-5">
-                            <h1>Subtotal</h1>
+                        <div className="flex flex-col gap-2 mx-10 my-2">     
+                        {appliedTaxes.map((tax, index) => (
+                            <div key={index} className="flex justify-between">
+                                <span className="rounded border w-min p-2 whitespace-nowrap self-center" >{tax.name}</span>
+                                <span className="w-fit p-2 border border-gray-300 rounded-md text-black self-center" >{tax.rate} {tax.type}</span>
+                                <div className="flex items-center justify-center">
+                                    <div className="text-1xl mt-2">
+                                        <h1>{calculateTaxAmount(tax)} $</h1>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                         </div>
-                        <div className="text-1xl mt-5">
-                            <h1>{calculateTotalAmount(printInvoice.Product)}</h1>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                        <input
-                            className="w-20 p-2 border border-gray-300 rounded-md text-black"
-                            type="text"
-                            value={selectedTax && `${selectedTax.name} tax`}
-                            disabled
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-between mx-10">
-                        <div className="flex items-center justify-between ">
-                            <input
-                                className="w-9 p-2 border border-gray-300 rounded-md text-black"
-                                type="text"
-                                value={selectedTax && selectedTax.rate}
-                                disabled
-                            />
-                            <p className="w-9 p-2  text-black" >{selectedTax && selectedTax.type}</p>
-                        </div>
-                        <div className="text-1xl mt-2">
-                            <h1>{taxAmount}</h1>
-                        </div>
-                    </div>
-
-                    <div>
-                    </div>
-                    <div className="flex items-center justify-between mx-10">
-                        <div className="text-1xl mt-2">
-                            <h1>Total</h1>
-                        </div>
-                        <div className="text-1xl mt-2">
-                            <h1>{totalAmountWithTax}</h1>
+                        <div className="flex items-center justify-between mx-10">
+                            <div className="text-1xl mt-2">
+                                <h1>Total</h1>
+                            </div>
+                            <div className="text-1xl mt-2">
+                                <h1>{totalAmountWithTax} $</h1>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </ div>
+            </div>
         );
     }
 }   

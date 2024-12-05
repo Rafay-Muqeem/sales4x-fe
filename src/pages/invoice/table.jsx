@@ -231,7 +231,7 @@ export function Invoice() {
               </tr>
             </thead>
             <tbody>
-              {currentItems.map(({ id, Customer, paymentStatus, paymentMethod, totalAmount, createdAt, Vehicle, Business }, index) => {
+              {currentItems.map(({ id, Customer, paymentStatus, paymentMethod, totalAmount, createdAt, CustomerVehicle, Business }, index) => {
                 const isLast = index === currentItems.length - 1;
                 const classes = isLast
                   ? "p-4"
@@ -294,7 +294,7 @@ export function Invoice() {
                         color="blue-gray"
                         className="font-normal "
                       >
-                        {`${Vehicle['make']} ${Vehicle['model']} ${Vehicle['year']}`}
+                        {`${CustomerVehicle['make']} ${CustomerVehicle['model']} ${CustomerVehicle['year']}`}
                       </Typography>
                     </td>
 
